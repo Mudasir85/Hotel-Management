@@ -205,7 +205,10 @@
       const form = document.getElementById('bookingForm');
       const bookingsBody = document.getElementById('bookingsBody');
       const messageEl = document.getElementById('message');
-      const API_CANDIDATES = ['/api/bookings', '/sitesh/api/bookings'];
+
+      const isSiteShPath = window.location.pathname === '/sitesh' || window.location.pathname.startsWith('/sitesh/');
+      const preferredApi = isSiteShPath ? '/sitesh/api/bookings' : '/api/bookings';
+      const API_CANDIDATES = [...new Set([preferredApi, '/api/bookings', '/sitesh/api/bookings'])];
       let bookingsApiUrl = API_CANDIDATES[0];
 
       function setMessage(text, type) {
@@ -215,6 +218,14 @@
 
       function toDisplayDate(value) {
         return value;
+      }
+
+      async function readJsonSafe(res) {
+        try {
+          return await res.json();
+        } catch (_) {
+          return null;
+        }
       }
 
       async function resolveApiUrl() {
@@ -236,7 +247,10 @@
         if (!res.ok) {
           throw new Error(`Failed to fetch bookings (${res.status})`);
         }
-        const bookings = await res.json();
+        const bookings = await readJsonSafe(res);
+        if (!Array.isArray(bookings)) {
+          throw new Error('Invalid bookings response');
+        }
 
         bookingsBody.innerHTML = '';
         for (const booking of bookings) {
@@ -274,9 +288,9 @@
           body: JSON.stringify(payload)
         });
 
-        const data = await res.json();
+        const data = await readJsonSafe(res);
         if (!res.ok) {
-          setMessage(data.error || 'Failed to create booking', 'error');
+          setMessage((data && data.error) || `Failed to create booking (${res.status})`, 'error');
           return;
         }
 
@@ -297,10 +311,10 @@
         }
 
         const res = await fetch(`${bookingsApiUrl}/${id}`, { method: 'DELETE' });
-        const data = await res.json();
+        const data = await readJsonSafe(res);
 
         if (!res.ok) {
-          setMessage(data.error || 'Failed to delete booking', 'error');
+          setMessage((data && data.error) || `Failed to delete booking (${res.status})`, 'error');
           return;
         }
 
