@@ -205,6 +205,7 @@
       const form = document.getElementById('bookingForm');
       const bookingsBody = document.getElementById('bookingsBody');
       const messageEl = document.getElementById('message');
+      const BOOKINGS_API_URL = '/sitesh/api/bookings';
 
       function setMessage(text, type) {
         messageEl.textContent = text;
@@ -216,7 +217,7 @@
       }
 
       async function loadBookings() {
-        const res = await fetch('/api/bookings');
+        const res = await fetch(BOOKINGS_API_URL);
         const bookings = await res.json();
 
         bookingsBody.innerHTML = '';
@@ -249,7 +250,7 @@
           check_out_date: form.check_out_date.value
         };
 
-        const res = await fetch('/api/bookings', {
+        const res = await fetch(BOOKINGS_API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -277,7 +278,7 @@
           return;
         }
 
-        const res = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+        const res = await fetch(`${BOOKINGS_API_URL}/${id}`, { method: 'DELETE' });
         const data = await res.json();
 
         if (!res.ok) {
