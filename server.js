@@ -3,7 +3,8 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const ALLOWED_ROOMS = new Set(['101', '102', '103']);
 
 // Middleware
 app.use(express.json());
@@ -20,7 +21,7 @@ const db = new sqlite3.Database('./bookings.db', (err) => {
 
 db.run(`
   CREATE TABLE IF NOT EXISTS bookings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     guest_name TEXT NOT NULL,
     guest_phone TEXT NOT NULL,
     room_number TEXT NOT NULL,
@@ -50,6 +51,16 @@ app.post('/api/bookings', (req, res) => {
 
   if (!/^\d{10}$/.test(guest_phone)) {
     return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
+  }
+
+  if (!ALLOWED_ROOMS.has(String(room_number))) {
+    return res.status(400).json({ error: 'Room must be one of: 101, 102, 103' });
+  }
+
+  const checkIn = new Date(check_in_date);
+  const checkOut = new Date(check_out_date);
+  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+    return res.status(400).json({ error: 'Invalid date format' });
   }
 
   if (check_out_date <= check_in_date) {
@@ -111,6 +122,12 @@ app.delete('/api/bookings/:id', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Hotel Booking System running at http://localhost:${PORT}`);
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`Hotel Booking System running at http://127.0.0.1:${PORT}`);
+});
+
+process.on('SIGINT', () => {
+  db.close(() => {
+    process.exit(0);
+  });
 });
