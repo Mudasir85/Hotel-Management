@@ -205,7 +205,8 @@
       const form = document.getElementById('bookingForm');
       const bookingsBody = document.getElementById('bookingsBody');
       const messageEl = document.getElementById('message');
-      const BOOKINGS_API_URL = '/sitesh/api/bookings';
+      const API_CANDIDATES = ['/api/bookings', '/sitesh/api/bookings'];
+      let bookingsApiUrl = API_CANDIDATES[0];
 
       function setMessage(text, type) {
         messageEl.textContent = text;
@@ -216,8 +217,25 @@
         return value;
       }
 
+      async function resolveApiUrl() {
+        for (const candidate of API_CANDIDATES) {
+          try {
+            const res = await fetch(candidate);
+            if (res.ok) {
+              bookingsApiUrl = candidate;
+              return;
+            }
+          } catch (_) {}
+        }
+
+        throw new Error('No reachable bookings API endpoint');
+      }
+
       async function loadBookings() {
-        const res = await fetch(BOOKINGS_API_URL);
+        const res = await fetch(bookingsApiUrl);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch bookings (${res.status})`);
+        }
         const bookings = await res.json();
 
         bookingsBody.innerHTML = '';
@@ -250,7 +268,7 @@
           check_out_date: form.check_out_date.value
         };
 
-        const res = await fetch(BOOKINGS_API_URL, {
+        const res = await fetch(bookingsApiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -278,7 +296,7 @@
           return;
         }
 
-        const res = await fetch(`${BOOKINGS_API_URL}/${id}`, { method: 'DELETE' });
+        const res = await fetch(`${bookingsApiUrl}/${id}`, { method: 'DELETE' });
         const data = await res.json();
 
         if (!res.ok) {
@@ -290,9 +308,11 @@
         await loadBookings();
       });
 
-      loadBookings().catch(() => {
-        setMessage('Failed to load bookings', 'error');
-      });
+      resolveApiUrl()
+        .then(loadBookings)
+        .catch(() => {
+          setMessage('Failed to load bookings', 'error');
+        });
     </script>
   </body>
 </html>
