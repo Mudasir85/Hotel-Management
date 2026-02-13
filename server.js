@@ -8,6 +8,13 @@ const HOST = process.env.HOST || '127.0.0.1';
 const DB_PATH = path.join(__dirname, 'bookings.db');
 const ALLOWED_ROOMS = new Set(['101', '102', '103']);
 const BOOKING_ROUTES = ['/api/bookings', '/sitesh/api/bookings'];
+const REQUIRED_BOOKING_COLUMNS = [
+  { name: 'guest_name', type: 'TEXT NOT NULL' },
+  { name: 'guest_phone', type: 'TEXT NOT NULL' },
+  { name: 'room_number', type: 'TEXT NOT NULL' },
+  { name: 'check_in_date', type: 'DATE NOT NULL' },
+  { name: 'check_out_date', type: 'DATE NOT NULL' }
+];
 
 // Middleware
 app.use(express.json());
@@ -25,7 +32,49 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 
 function ensureSchema() {
   db.serialize(() => {
-    db.run(`
+    db.get(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'bookings'",
+      [],
+      (tableErr, table) => {
+        if (tableErr) {
+          console.error('Failed to inspect database schema:', tableErr.message);
+          return;
+        }
+
+        if (!table) {
+          createCanonicalBookingsTable();
+          return;
+        }
+
+        db.all('PRAGMA table_info(bookings)', [], (columnErr, columns) => {
+          if (columnErr) {
+            console.error('Failed to inspect bookings schema:', columnErr.message);
+            return;
+          }
+
+          const existingNames = new Set(columns.map((col) => col.name));
+          const requiredNames = new Set(REQUIRED_BOOKING_COLUMNS.map((col) => col.name));
+          const missingRequired = REQUIRED_BOOKING_COLUMNS.filter((col) => !existingNames.has(col.name));
+          const blockingLegacyColumns = columns.filter(
+            (col) => !requiredNames.has(col.name) && col.notnull === 1 && col.dflt_value == null
+          );
+
+          if (missingRequired.length === 0 && blockingLegacyColumns.length === 0) {
+            return;
+          }
+
+          migrateLegacyBookingsTable(columns);
+        });
+      }
+    );
+  });
+}
+
+ensureSchema();
+
+function createCanonicalBookingsTable() {
+  db.run(
+    `
       CREATE TABLE IF NOT EXISTS bookings (
         id INTEGER PRIMARY KEY,
         guest_name TEXT NOT NULL,
@@ -34,37 +83,78 @@ function ensureSchema() {
         check_in_date DATE NOT NULL,
         check_out_date DATE NOT NULL
       )
-    `);
-
-    db.all('PRAGMA table_info(bookings)', [], (err, columns) => {
+    `,
+    (err) => {
       if (err) {
-        console.error('Failed to inspect bookings schema:', err.message);
+        console.error('Failed to create bookings table:', err.message);
+      }
+    }
+  );
+}
+
+function quoteIdentifier(identifier) {
+  return `"${String(identifier).replace(/"/g, '""')}"`;
+}
+
+function migrateLegacyBookingsTable(currentColumns) {
+  const legacyTable = `bookings_legacy_${Date.now()}`;
+  const currentNames = new Set(currentColumns.map((col) => col.name));
+
+  db.run(`ALTER TABLE bookings RENAME TO ${quoteIdentifier(legacyTable)}`, (renameErr) => {
+    if (renameErr) {
+      console.error('Failed to rename legacy bookings table:', renameErr.message);
+      return;
+    }
+
+    createCanonicalBookingsTable();
+
+    db.all(`PRAGMA table_info(${quoteIdentifier(legacyTable)})`, [], (legacyErr, legacyColumns) => {
+      if (legacyErr) {
+        console.error('Failed to inspect legacy bookings table:', legacyErr.message);
         return;
       }
 
-      const existing = new Set(columns.map((col) => col.name));
-      const required = {
-        guest_name: 'TEXT',
-        guest_phone: 'TEXT',
-        room_number: 'TEXT',
-        check_in_date: 'DATE',
-        check_out_date: 'DATE'
+      const legacyNames = new Set(legacyColumns.map((col) => col.name));
+      const columnAliases = {
+        guest_name: ['guest_name', 'guestName', 'name', 'guest'],
+        guest_phone: ['guest_phone', 'guestPhone', 'phone', 'mobile'],
+        room_number: ['room_number', 'roomNumber', 'room'],
+        check_in_date: ['check_in_date', 'checkInDate', 'check_in', 'checkin_date'],
+        check_out_date: ['check_out_date', 'checkOutDate', 'check_out', 'checkout_date']
       };
 
-      for (const [name, type] of Object.entries(required)) {
-        if (!existing.has(name)) {
-          db.run(`ALTER TABLE bookings ADD COLUMN ${name} ${type}`, (alterErr) => {
-            if (alterErr) {
-              console.error(`Failed to add missing column ${name}:`, alterErr.message);
-            }
-          });
+      const selectExpressions = ['NULL'];
+      for (const required of REQUIRED_BOOKING_COLUMNS) {
+        const aliases = columnAliases[required.name] || [required.name];
+        const source = aliases.find((alias) => legacyNames.has(alias));
+        if (source) {
+          selectExpressions.push(`CAST(${quoteIdentifier(source)} AS TEXT)`);
+        } else {
+          selectExpressions.push("''");
         }
       }
+
+      if (legacyNames.has('id') && currentNames.has('id')) {
+        selectExpressions[0] = quoteIdentifier('id');
+      }
+
+      const insertQuery = `
+        INSERT INTO bookings (id, guest_name, guest_phone, room_number, check_in_date, check_out_date)
+        SELECT ${selectExpressions.join(', ')}
+        FROM ${quoteIdentifier(legacyTable)}
+      `;
+
+      db.run(insertQuery, (insertErr) => {
+        if (insertErr) {
+          console.error('Failed to migrate legacy bookings data:', insertErr.message);
+          return;
+        }
+
+        console.log(`Migrated legacy bookings schema to canonical table (backup: ${legacyTable})`);
+      });
     });
   });
 }
-
-ensureSchema();
 
 function parseBookingPayload(req) {
   const body = req.body && typeof req.body === 'object' ? req.body : {};

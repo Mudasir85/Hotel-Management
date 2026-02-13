@@ -276,27 +276,31 @@
 
         const payload = {
           guest_name: form.guest_name.value.trim(),
-          guest_phone: form.guest_phone.value.trim(),
+          guest_phone: form.guest_phone.value.trim().replace(/\D/g, ''),
           room_number: form.room_number.value,
           check_in_date: form.check_in_date.value,
           check_out_date: form.check_out_date.value
         };
 
-        const res = await fetch(bookingsApiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        try {
+          const res = await fetch(bookingsApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
 
-        const data = await readJsonSafe(res);
-        if (!res.ok) {
-          setMessage((data && data.error) || `Failed to create booking (${res.status})`, 'error');
-          return;
+          const data = await readJsonSafe(res);
+          if (!res.ok) {
+            setMessage((data && data.error) || `Failed to create booking (${res.status})`, 'error');
+            return;
+          }
+
+          setMessage(`Booking #${data.id} created successfully`, 'success');
+          form.reset();
+          await loadBookings();
+        } catch (_) {
+          setMessage('Failed to create booking (network error)', 'error');
         }
-
-        setMessage(`Booking #${data.id} created successfully`, 'success');
-        form.reset();
-        await loadBookings();
       });
 
       bookingsBody.addEventListener('click', async (event) => {
@@ -310,16 +314,20 @@
           return;
         }
 
-        const res = await fetch(`${bookingsApiUrl}/${id}`, { method: 'DELETE' });
-        const data = await readJsonSafe(res);
+        try {
+          const res = await fetch(`${bookingsApiUrl}/${id}`, { method: 'DELETE' });
+          const data = await readJsonSafe(res);
 
-        if (!res.ok) {
-          setMessage((data && data.error) || `Failed to delete booking (${res.status})`, 'error');
-          return;
+          if (!res.ok) {
+            setMessage((data && data.error) || `Failed to delete booking (${res.status})`, 'error');
+            return;
+          }
+
+          setMessage('Booking deleted', 'success');
+          await loadBookings();
+        } catch (_) {
+          setMessage('Failed to delete booking (network error)', 'error');
         }
-
-        setMessage('Booking deleted', 'success');
-        await loadBookings();
       });
 
       resolveApiUrl()
