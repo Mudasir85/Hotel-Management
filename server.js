@@ -8,12 +8,103 @@ const HOST = process.env.HOST || '127.0.0.1';
 const DB_PATH = path.join(__dirname, 'bookings.db');
 const ALLOWED_ROOMS = new Set(['101', '102', '103']);
 const BOOKING_ROUTES = ['/api/bookings', '/sitesh/api/bookings'];
+const PROJECT_INFO_ROUTES = ['/api/project-info', '/sitesh/api/project-info'];
 const REQUIRED_BOOKING_COLUMNS = [
   { name: 'guest_name', type: 'TEXT NOT NULL' },
   { name: 'guest_phone', type: 'TEXT NOT NULL' },
   { name: 'room_number', type: 'TEXT NOT NULL' },
   { name: 'check_in_date', type: 'DATE NOT NULL' },
   { name: 'check_out_date', type: 'DATE NOT NULL' }
+];
+const PROJECT_TECH_STACK = [
+  { layer: 'Runtime', items: ['Node.js'] },
+  { layer: 'Backend Framework', items: ['Express 4.x'] },
+  { layer: 'Database', items: ['SQLite 3 (file: bookings.db)'] },
+  { layer: 'Database Driver', items: ['sqlite3 npm package'] },
+  { layer: 'Frontend', items: ['Vanilla HTML', 'Inline CSS', 'Vanilla JavaScript (Fetch API)'] },
+  { layer: 'API Style', items: ['REST over HTTP', 'JSON request/response'] },
+  { layer: 'Validation', items: ['Server-side custom validation', 'Client-side HTML5 constraints'] },
+  { layer: 'Schema Strategy', items: ['Runtime table bootstrap', 'Legacy-schema migration with column aliasing'] },
+  { layer: 'Process Model', items: ['Single-process Express server'] },
+  { layer: 'Configuration', items: ['Environment variables: HOST, PORT'] },
+  { layer: 'Package Manager', items: ['npm'] }
+];
+const PROJECT_EDGE_CASES = [
+  {
+    area: 'Input completeness',
+    cases: [
+      'Missing guest_name, guest_phone, room_number, check_in_date, or check_out_date returns HTTP 400.',
+      'Whitespace-only values are trimmed and treated as empty.'
+    ]
+  },
+  {
+    area: 'Phone validation',
+    cases: [
+      'Non-10-digit phone input returns HTTP 400.',
+      'Client strips non-digits before submit; server still enforces strict 10-digit format.'
+    ]
+  },
+  {
+    area: 'Room validation',
+    cases: [
+      'Rooms outside 101, 102, 103 return HTTP 400.',
+      'Room identifier is handled as text to match dropdown and storage.'
+    ]
+  },
+  {
+    area: 'Date validation',
+    cases: [
+      'Invalid date formats return HTTP 400.',
+      'check_out_date <= check_in_date returns HTTP 400.',
+      'Adjacent bookings are allowed because overlap uses strict operators (< and >).'
+    ]
+  },
+  {
+    area: 'Double-booking prevention',
+    cases: [
+      'Any overlap in same room returns HTTP 409.',
+      'Different rooms can book identical date ranges without conflict.',
+      'Contained, wrapping, or partial overlaps are all blocked by overlap query.'
+    ]
+  },
+  {
+    area: 'Delete flow',
+    cases: [
+      'Non-integer, zero, or negative IDs return HTTP 400.',
+      'Deleting unknown ID returns HTTP 404.',
+      'Delete success returns HTTP 200 and message payload.'
+    ]
+  },
+  {
+    area: 'Body parsing and malformed requests',
+    cases: [
+      'Malformed JSON body returns HTTP 400 via global error middleware.',
+      'Unexpected server failures are caught and return HTTP 500.'
+    ]
+  },
+  {
+    area: 'Schema bootstrapping and migration',
+    cases: [
+      'Missing bookings table is created automatically at startup.',
+      'Legacy bookings table with renamed columns is migrated to canonical schema.',
+      'Extra NOT NULL legacy columns without defaults trigger migration path to avoid insert failures.',
+      'Legacy table is preserved as timestamped backup table after migration.'
+    ]
+  },
+  {
+    area: 'Routing compatibility',
+    cases: [
+      'API supports both /api/* and /sitesh/api/* paths for booking routes.',
+      'Frontend resolves reachable booking API endpoint dynamically.'
+    ]
+  },
+  {
+    area: 'Operational concerns',
+    cases: [
+      'Database connection failure exits process early.',
+      'SIGINT closes SQLite connection before process exit.'
+    ]
+  }
 ];
 
 // Middleware
@@ -176,6 +267,15 @@ app.get(BOOKING_ROUTES, (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch bookings' });
     }
     return res.json(rows);
+  });
+});
+
+// GET /api/project-info - Tech stack and edge-case matrix
+app.get(PROJECT_INFO_ROUTES, (req, res) => {
+  return res.json({
+    project: 'Hotel Booking & Reservation System',
+    tech_stack: PROJECT_TECH_STACK,
+    edge_cases: PROJECT_EDGE_CASES
   });
 });
 
