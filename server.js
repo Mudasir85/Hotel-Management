@@ -1,391 +1,71 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+
+const { initDatabase, closeDatabase } = require('./src/database');
+const { requireAuth } = require('./src/middleware/jwt-auth.guard');
+const authRoutes = require('./src/modules/auth/auth.routes');
+const bookingsRoutes = require('./src/modules/bookings/bookings.routes');
+const viewRoutes = require('./src/modules/views/views.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '127.0.0.1';
-const DB_PATH = path.join(__dirname, 'bookings.db');
-const ALLOWED_ROOMS = new Set(['101', '102', '103']);
-const BOOKING_ROUTES = ['/api/bookings', '/sitesh/api/bookings'];
-const PROJECT_INFO_ROUTES = ['/api/project-info', '/sitesh/api/project-info'];
-const REQUIRED_BOOKING_COLUMNS = [
-  { name: 'guest_name', type: 'TEXT NOT NULL' },
-  { name: 'guest_phone', type: 'TEXT NOT NULL' },
-  { name: 'room_number', type: 'TEXT NOT NULL' },
-  { name: 'check_in_date', type: 'DATE NOT NULL' },
-  { name: 'check_out_date', type: 'DATE NOT NULL' }
-];
-const PROJECT_TECH_STACK = [
-  { layer: 'Runtime', items: ['Node.js'] },
-  { layer: 'Backend Framework', items: ['Express 4.x'] },
-  { layer: 'Database', items: ['SQLite 3 (file: bookings.db)'] },
-  { layer: 'Database Driver', items: ['sqlite3 npm package'] },
-  { layer: 'Frontend', items: ['Vanilla HTML', 'Inline CSS', 'Vanilla JavaScript (Fetch API)'] },
-  { layer: 'API Style', items: ['REST over HTTP', 'JSON request/response'] },
-  { layer: 'Validation', items: ['Server-side custom validation', 'Client-side HTML5 constraints'] },
-  { layer: 'Schema Strategy', items: ['Runtime table bootstrap', 'Legacy-schema migration with column aliasing'] },
-  { layer: 'Process Model', items: ['Single-process Express server'] },
-  { layer: 'Configuration', items: ['Environment variables: HOST, PORT'] },
-  { layer: 'Package Manager', items: ['npm'] }
-];
-const PROJECT_EDGE_CASES = [
-  {
-    area: 'Input completeness',
-    cases: [
-      'Missing guest_name, guest_phone, room_number, check_in_date, or check_out_date returns HTTP 400.',
-      'Whitespace-only values are trimmed and treated as empty.'
-    ]
-  },
-  {
-    area: 'Phone validation',
-    cases: [
-      'Non-10-digit phone input returns HTTP 400.',
-      'Client strips non-digits before submit; server still enforces strict 10-digit format.'
-    ]
-  },
-  {
-    area: 'Room validation',
-    cases: [
-      'Rooms outside 101, 102, 103 return HTTP 400.',
-      'Room identifier is handled as text to match dropdown and storage.'
-    ]
-  },
-  {
-    area: 'Date validation',
-    cases: [
-      'Invalid date formats return HTTP 400.',
-      'check_out_date <= check_in_date returns HTTP 400.',
-      'Adjacent bookings are allowed because overlap uses strict operators (< and >).'
-    ]
-  },
-  {
-    area: 'Double-booking prevention',
-    cases: [
-      'Any overlap in same room returns HTTP 409.',
-      'Different rooms can book identical date ranges without conflict.',
-      'Contained, wrapping, or partial overlaps are all blocked by overlap query.'
-    ]
-  },
-  {
-    area: 'Delete flow',
-    cases: [
-      'Non-integer, zero, or negative IDs return HTTP 400.',
-      'Deleting unknown ID returns HTTP 404.',
-      'Delete success returns HTTP 200 and message payload.'
-    ]
-  },
-  {
-    area: 'Body parsing and malformed requests',
-    cases: [
-      'Malformed JSON body returns HTTP 400 via global error middleware.',
-      'Unexpected server failures are caught and return HTTP 500.'
-    ]
-  },
-  {
-    area: 'Schema bootstrapping and migration',
-    cases: [
-      'Missing bookings table is created automatically at startup.',
-      'Legacy bookings table with renamed columns is migrated to canonical schema.',
-      'Extra NOT NULL legacy columns without defaults trigger migration path to avoid insert failures.',
-      'Legacy table is preserved as timestamped backup table after migration.'
-    ]
-  },
-  {
-    area: 'Routing compatibility',
-    cases: [
-      'API supports both /api/* and /sitesh/api/* paths for booking routes.',
-      'Frontend resolves reachable booking API endpoint dynamically.'
-    ]
-  },
-  {
-    area: 'Operational concerns',
-    cases: [
-      'Database connection failure exits process early.',
-      'SIGINT closes SQLite connection before process exit.'
-    ]
-  }
-];
 
-// Middleware
+const PROJECT_INFO = {
+  project: 'Hotel Booking & Reservation System',
+  architecture: {
+    backend: ['Node.js', 'Express 4.x'],
+    auth: ['JWT', 'Route Guard Middleware'],
+    database: ['SQLite 3 (bookings.db)'],
+    frontend: ['Multi-page HTML/CSS/JS', 'Shared layout components']
+  }
+};
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Database setup
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('Failed to connect to database:', err.message);
-    process.exit(1);
-  }
-  console.log('Connected to SQLite database');
+app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
+
+app.use('/api/auth', authRoutes);
+app.use(['/api/bookings', '/sitesh/api/bookings'], requireAuth, bookingsRoutes);
+app.use('/', viewRoutes);
+
+app.get(['/api/project-info', '/sitesh/api/project-info'], (_req, res) => {
+  res.json(PROJECT_INFO);
 });
 
-function ensureSchema() {
-  db.serialize(() => {
-    db.get(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'bookings'",
-      [],
-      (tableErr, table) => {
-        if (tableErr) {
-          console.error('Failed to inspect database schema:', tableErr.message);
-          return;
-        }
-
-        if (!table) {
-          createCanonicalBookingsTable();
-          return;
-        }
-
-        db.all('PRAGMA table_info(bookings)', [], (columnErr, columns) => {
-          if (columnErr) {
-            console.error('Failed to inspect bookings schema:', columnErr.message);
-            return;
-          }
-
-          const existingNames = new Set(columns.map((col) => col.name));
-          const requiredNames = new Set(REQUIRED_BOOKING_COLUMNS.map((col) => col.name));
-          const missingRequired = REQUIRED_BOOKING_COLUMNS.filter((col) => !existingNames.has(col.name));
-          const blockingLegacyColumns = columns.filter(
-            (col) => !requiredNames.has(col.name) && col.notnull === 1 && col.dflt_value == null
-          );
-
-          if (missingRequired.length === 0 && blockingLegacyColumns.length === 0) {
-            return;
-          }
-
-          migrateLegacyBookingsTable(columns);
-        });
-      }
-    );
-  });
-}
-
-ensureSchema();
-
-function createCanonicalBookingsTable() {
-  db.run(
-    `
-      CREATE TABLE IF NOT EXISTS bookings (
-        id INTEGER PRIMARY KEY,
-        guest_name TEXT NOT NULL,
-        guest_phone TEXT NOT NULL,
-        room_number TEXT NOT NULL,
-        check_in_date DATE NOT NULL,
-        check_out_date DATE NOT NULL
-      )
-    `,
-    (err) => {
-      if (err) {
-        console.error('Failed to create bookings table:', err.message);
-      }
-    }
-  );
-}
-
-function quoteIdentifier(identifier) {
-  return `"${String(identifier).replace(/"/g, '""')}"`;
-}
-
-function migrateLegacyBookingsTable(currentColumns) {
-  const legacyTable = `bookings_legacy_${Date.now()}`;
-  const currentNames = new Set(currentColumns.map((col) => col.name));
-
-  db.run(`ALTER TABLE bookings RENAME TO ${quoteIdentifier(legacyTable)}`, (renameErr) => {
-    if (renameErr) {
-      console.error('Failed to rename legacy bookings table:', renameErr.message);
-      return;
-    }
-
-    createCanonicalBookingsTable();
-
-    db.all(`PRAGMA table_info(${quoteIdentifier(legacyTable)})`, [], (legacyErr, legacyColumns) => {
-      if (legacyErr) {
-        console.error('Failed to inspect legacy bookings table:', legacyErr.message);
-        return;
-      }
-
-      const legacyNames = new Set(legacyColumns.map((col) => col.name));
-      const columnAliases = {
-        guest_name: ['guest_name', 'guestName', 'name', 'guest'],
-        guest_phone: ['guest_phone', 'guestPhone', 'phone', 'mobile'],
-        room_number: ['room_number', 'roomNumber', 'room'],
-        check_in_date: ['check_in_date', 'checkInDate', 'check_in', 'checkin_date'],
-        check_out_date: ['check_out_date', 'checkOutDate', 'check_out', 'checkout_date']
-      };
-
-      const selectExpressions = ['NULL'];
-      for (const required of REQUIRED_BOOKING_COLUMNS) {
-        const aliases = columnAliases[required.name] || [required.name];
-        const source = aliases.find((alias) => legacyNames.has(alias));
-        if (source) {
-          selectExpressions.push(`CAST(${quoteIdentifier(source)} AS TEXT)`);
-        } else {
-          selectExpressions.push("''");
-        }
-      }
-
-      if (legacyNames.has('id') && currentNames.has('id')) {
-        selectExpressions[0] = quoteIdentifier('id');
-      }
-
-      const insertQuery = `
-        INSERT INTO bookings (id, guest_name, guest_phone, room_number, check_in_date, check_out_date)
-        SELECT ${selectExpressions.join(', ')}
-        FROM ${quoteIdentifier(legacyTable)}
-      `;
-
-      db.run(insertQuery, (insertErr) => {
-        if (insertErr) {
-          console.error('Failed to migrate legacy bookings data:', insertErr.message);
-          return;
-        }
-
-        console.log(`Migrated legacy bookings schema to canonical table (backup: ${legacyTable})`);
-      });
-    });
-  });
-}
-
-function parseBookingPayload(req) {
-  const body = req.body && typeof req.body === 'object' ? req.body : {};
-
-  return {
-    guest_name: String(body.guest_name ?? '').trim(),
-    guest_phone: String(body.guest_phone ?? '').trim(),
-    room_number: String(body.room_number ?? '').trim(),
-    check_in_date: String(body.check_in_date ?? '').trim(),
-    check_out_date: String(body.check_out_date ?? '').trim()
-  };
-}
-
-// GET /api/bookings - List all bookings
-app.get(BOOKING_ROUTES, (req, res) => {
-  db.all('SELECT * FROM bookings ORDER BY check_in_date ASC', [], (err, rows) => {
-    if (err) {
-      console.error('Failed to fetch bookings:', err.message);
-      return res.status(500).json({ error: 'Failed to fetch bookings' });
-    }
-    return res.json(rows);
-  });
-});
-
-// GET /api/project-info - Tech stack and edge-case matrix
-app.get(PROJECT_INFO_ROUTES, (req, res) => {
-  return res.json({
-    project: 'Hotel Booking & Reservation System',
-    tech_stack: PROJECT_TECH_STACK,
-    edge_cases: PROJECT_EDGE_CASES
-  });
-});
-
-// POST /api/bookings - Create a booking
-app.post(BOOKING_ROUTES, (req, res) => {
-  const { guest_name, guest_phone, room_number, check_in_date, check_out_date } = parseBookingPayload(req);
-
-  // Basic validation
-  if (!guest_name || !guest_phone || !room_number || !check_in_date || !check_out_date) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
-
-  if (!/^\d{10}$/.test(guest_phone)) {
-    return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
-  }
-
-  if (!ALLOWED_ROOMS.has(room_number)) {
-    return res.status(400).json({ error: 'Room must be one of: 101, 102, 103' });
-  }
-
-  const checkIn = new Date(check_in_date);
-  const checkOut = new Date(check_out_date);
-  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
-    return res.status(400).json({ error: 'Invalid date format' });
-  }
-
-  if (check_out_date <= check_in_date) {
-    return res.status(400).json({ error: 'Check-out date must be after check-in date' });
-  }
-
-  // Double-booking prevention: check for overlapping reservations on the same room
-  const overlapQuery = `
-    SELECT id FROM bookings
-    WHERE room_number = ?
-      AND check_in_date < ?
-      AND check_out_date > ?
-    LIMIT 1
-  `;
-
-  db.get(overlapQuery, [room_number, check_out_date, check_in_date], (err, row) => {
-    if (err) {
-      console.error('Failed to check availability:', err.message);
-      return res.status(500).json({ error: 'Failed to check availability' });
-    }
-
-    if (row) {
-      return res.status(409).json({ error: `Room ${room_number} is already booked for the selected dates` });
-    }
-
-    const insertQuery = `
-      INSERT INTO bookings (guest_name, guest_phone, room_number, check_in_date, check_out_date)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-
-    db.run(insertQuery, [guest_name, guest_phone, room_number, check_in_date, check_out_date], function insertBooking(err2) {
-      if (err2) {
-        console.error('Failed to create booking:', err2.message);
-        return res.status(500).json({ error: 'Failed to create booking' });
-      }
-
-      return res.status(201).json({
-        id: this.lastID,
-        guest_name,
-        guest_phone,
-        room_number,
-        check_in_date,
-        check_out_date
-      });
-    });
-  });
-});
-
-// DELETE /api/bookings/:id - Delete a booking
-app.delete(['/api/bookings/:id', '/sitesh/api/bookings/:id'], (req, res) => {
-  const id = Number(req.params.id);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'Invalid booking id' });
-  }
-
-  db.run('DELETE FROM bookings WHERE id = ?', [id], function deleteBooking(err) {
-    if (err) {
-      console.error('Failed to delete booking:', err.message);
-      return res.status(500).json({ error: 'Failed to delete booking' });
-    }
-
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    return res.json({ message: 'Booking deleted' });
-  });
-});
-
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   if (err instanceof SyntaxError && 'body' in err) {
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
   console.error('Unhandled server error:', err.message);
-  return res.status(500).json({ error: 'Internal server error' });
+  if (req.originalUrl.startsWith('/api/') || req.originalUrl.includes('/sitesh/api/')) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+
+  return res.status(500).send('Internal server error');
 });
 
-// Start server
-app.listen(PORT, HOST, () => {
-  console.log(`Hotel Booking System running at http://${HOST}:${PORT}`);
+app.use((_req, res) => {
+  return res.redirect('/');
 });
 
-process.on('SIGINT', () => {
-  db.close(() => {
-    process.exit(0);
-  });
+async function bootstrap() {
+  try {
+    await initDatabase();
+    app.listen(PORT, HOST, () => {
+      console.log(`Hotel Booking System running at http://${HOST}:${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err.message);
+    process.exit(1);
+  }
+}
+
+bootstrap();
+
+process.on('SIGINT', async () => {
+  await closeDatabase();
+  process.exit(0);
 });
