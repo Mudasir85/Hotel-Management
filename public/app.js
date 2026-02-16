@@ -33,7 +33,7 @@ const Auth = {
   // Redirect to login if not authenticated
   requireAuth() {
     if (!this.isLoggedIn()) {
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return false;
     }
     return true;
@@ -41,7 +41,7 @@ const Auth = {
 
   logout() {
     this.clear();
-    window.location.href = '/login.html';
+    window.location.href = '/login';
   }
 };
 
@@ -55,9 +55,9 @@ function renderNavbar(activePage) {
     <div class="navbar">
       <div class="navbar-brand">Hotel Booking System</div>
       <div class="navbar-links">
-        <a href="/dashboard.html" class="${activePage === 'dashboard' ? 'active' : ''}">Dashboard</a>
-        <a href="/index.html" class="${activePage === 'bookings' ? 'active' : ''}">Bookings</a>
-        <a href="/contact.html" class="${activePage === 'contact' ? 'active' : ''}">Contact</a>
+        <a href="/dashboard" class="${activePage === 'dashboard' ? 'active' : ''}">Dashboard</a>
+        <a href="/dashboard/bookings" class="${activePage === 'bookings' ? 'active' : ''}">Bookings</a>
+        <a href="/dashboard/contact" class="${activePage === 'contact' ? 'active' : ''}">Contact</a>
       </div>
       <div class="navbar-user">
         <span class="user-name">${user ? user.full_name : 'User'}</span>

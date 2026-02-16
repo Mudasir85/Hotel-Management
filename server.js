@@ -258,10 +258,29 @@ app.delete('/api/bookings/:id', authenticateToken, (req, res) => {
   });
 });
 
-// ─── SPA Fallback ─────────────────────────────────────────────────
-// Serve login.html for unauthenticated root access
-app.get('/', (req, res) => {
+// ─── Page Routes ─────────────────────────────────────────────────
+
+// Public routes
+app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Protected dashboard routes (auth checked client-side via app.js)
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/dashboard/bookings', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/dashboard/contact', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'contact.html'));
+});
+
+// Root redirects to login
+app.get('/', (req, res) => {
+  res.redirect('/login');
 });
 
 // Start server
