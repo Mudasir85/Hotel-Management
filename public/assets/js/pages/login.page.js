@@ -1,14 +1,3 @@
-async function checkExistingSession() {
-  try {
-    const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
-    if (res.ok) {
-      window.location.href = '/dashboard';
-    }
-  } catch (_err) {
-    // Ignore session check errors on login page
-  }
-}
-
 function setNotice(message, type) {
   const notice = document.getElementById('notice');
   notice.textContent = message;
@@ -47,7 +36,12 @@ async function onLoginSubmit(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  checkExistingSession();
-  const form = document.getElementById('loginForm');
-  form.addEventListener('submit', onLoginSubmit);
+  window.AuthGuard.redirectIfAuthenticated().then((alreadyAuthenticated) => {
+    if (alreadyAuthenticated) {
+      return;
+    }
+
+    const form = document.getElementById('loginForm');
+    form.addEventListener('submit', onLoginSubmit);
+  });
 });

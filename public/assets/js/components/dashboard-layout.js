@@ -1,7 +1,6 @@
 async function mountDashboardLayout(options) {
-  const user = await window.SessionService.getAuthenticatedUser();
+  const user = await window.AuthGuard.requireAuthenticatedUser();
   if (!user) {
-    window.location.href = '/login';
     return;
   }
 
