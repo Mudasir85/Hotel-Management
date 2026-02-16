@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a73e8;
+      color: #fff;
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    header h1 { font-size: 1.6rem; font-weight: 600; }
+
+    nav {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    nav a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      margin: 0 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    nav a:hover, nav a.active {
+      color: #fff;
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      color: #1a73e8;
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #555;
+      margin-bottom: 12px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      margin-top: 8px;
+    }
+
+    .feature-item {
+      text-align: center;
+      padding: 20px 16px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      transition: box-shadow 0.2s;
+    }
+
+    .feature-item:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .feature-item h3 {
+      font-size: 0.95rem;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .feature-item p {
+      font-size: 0.85rem;
+      color: #777;
+      margin-bottom: 0;
+    }
+
+    .contact-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .contact-label {
+      font-weight: 600;
+      color: #333;
+      min-width: 60px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 600px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .contact-info { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hotel Booking System</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="about.html" class="active">About Us</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <!-- About Section -->
+    <div class="card">
+      <h2>About Us</h2>
+      <p>
+        Welcome to the Hotel Booking System. We provide a simple, reliable way to manage room reservations
+        for your hotel. Our system is designed to be straightforward and efficient, ensuring that
+        double-bookings never happen and your guests always have a smooth experience.
+      </p>
+      <p>
+        Built with modern web technologies, our platform offers real-time availability checking,
+        instant booking confirmation, and easy management of all your reservations in one place.
+      </p>
+    </div>
+
+    <!-- Features Section -->
+    <div class="card">
+      <h2>What We Offer</h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">&#128197;</div>
+          <h3>Easy Booking</h3>
+          <p>Create reservations in seconds with our simple booking form.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">&#128274;</div>
+          <h3>No Double-Bookings</h3>
+          <p>Automatic overlap detection prevents scheduling conflicts.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">&#128203;</div>
+          <h3>Booking Management</h3>
+          <p>View and manage all reservations from a single dashboard.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Section -->
+    <div class="card">
+      <h2>Contact Us</h2>
+      <div class="contact-info">
+        <div class="contact-item">
+          <span class="contact-label">Email:</span>
+          <span>info@hotelbooking.com</span>
+        </div>
+        <div class="contact-item">
+          <span class="contact-label">Phone:</span>
+          <span>+1 (555) 123-4567</span>
+        </div>
+        <div class="contact-item">
+          <span class="contact-label">Address:</span>
+          <span>123 Hotel Street, City, ST 10001</span>
+        </div>
+        <div class="contact-item">
+          <span class="contact-label">Hours:</span>
+          <span>24/7 - Always available</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 Hotel Booking System. All rights reserved.
+  </footer>
+</body>
+</html>

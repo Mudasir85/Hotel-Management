@@ -23,6 +23,25 @@
 
     header h1 { font-size: 1.6rem; font-weight: 600; }
 
+    nav {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    nav a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      margin: 0 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    nav a:hover, nav a.active {
+      color: #fff;
+      text-decoration: underline;
+    }
+
     .container {
       max-width: 960px;
       margin: 30px auto;
@@ -161,6 +180,10 @@
 <body>
   <header>
     <h1>Hotel Booking System</h1>
+    <nav>
+      <a href="index.html" class="active">Home</a>
+      <a href="about.html">About Us</a>
+    </nav>
   </header>
 
   <div class="container">
