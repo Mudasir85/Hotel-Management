@@ -1,71 +1,105 @@
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const { initDatabase, closeDatabase } = require('./src/database');
-const { requireAuth } = require('./src/middleware/jwt-auth.guard');
-const authRoutes = require('./src/modules/auth/auth.routes');
-const bookingsRoutes = require('./src/modules/bookings/bookings.routes');
-const viewRoutes = require('./src/modules/views/views.routes');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '127.0.0.1';
+const PORT = 3000;
 
-const PROJECT_INFO = {
-  project: 'Hotel Booking & Reservation System',
-  architecture: {
-    backend: ['Node.js', 'Express 4.x'],
-    auth: ['JWT', 'Route Guard Middleware'],
-    database: ['SQLite 3 (bookings.db)'],
-    frontend: ['Multi-page HTML/CSS/JS', 'Shared layout components']
-  }
-};
-
+// Middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
+// Database setup
+const db = new sqlite3.Database(path.join(__dirname, 'bookings.db'));
 
-app.use('/api/auth', authRoutes);
-app.use(['/api/bookings', '/sitesh/api/bookings'], requireAuth, bookingsRoutes);
-app.use('/', viewRoutes);
-
-app.get(['/api/project-info', '/sitesh/api/project-info'], (_req, res) => {
-  res.json(PROJECT_INFO);
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS bookings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guest_name TEXT NOT NULL,
+      guest_phone TEXT NOT NULL,
+      room_number TEXT NOT NULL,
+      check_in_date DATE NOT NULL,
+      check_out_date DATE NOT NULL
+    )
+  `);
 });
 
-app.use((err, req, res, _next) => {
-  if (err instanceof SyntaxError && 'body' in err) {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+// GET /api/bookings - List all bookings
+app.get('/api/bookings', (req, res) => {
+  db.all('SELECT * FROM bookings ORDER BY check_in_date ASC', [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to retrieve bookings' });
+    }
+    res.json(rows);
+  });
+});
+
+// POST /api/bookings - Create a booking with double-booking prevention
+app.post('/api/bookings', (req, res) => {
+  const { guest_name, guest_phone, room_number, check_in_date, check_out_date } = req.body;
+
+  // Basic validation
+  if (!guest_name || !guest_phone || !room_number || !check_in_date || !check_out_date) {
+    return res.status(400).json({ error: 'All fields are required' });
   }
 
-  console.error('Unhandled server error:', err.message);
-  if (req.originalUrl.startsWith('/api/') || req.originalUrl.includes('/sitesh/api/')) {
-    return res.status(500).json({ error: 'Internal server error' });
+  if (!/^\d{10}$/.test(guest_phone)) {
+    return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
   }
 
-  return res.status(500).send('Internal server error');
-});
+  if (new Date(check_out_date) <= new Date(check_in_date)) {
+    return res.status(400).json({ error: 'Check-out date must be after check-in date' });
+  }
 
-app.use((_req, res) => {
-  return res.redirect('/');
-});
+  // Double-booking prevention: check for overlapping reservations on the same room
+  const overlapQuery = `
+    SELECT id FROM bookings
+    WHERE room_number = ?
+      AND check_in_date < ?
+      AND check_out_date > ?
+  `;
 
-async function bootstrap() {
-  try {
-    await initDatabase();
-    app.listen(PORT, HOST, () => {
-      console.log(`Hotel Booking System running at http://${HOST}:${PORT}`);
+  db.get(overlapQuery, [room_number, check_out_date, check_in_date], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to check availability' });
+    }
+
+    if (row) {
+      return res.status(409).json({ error: 'Room ' + room_number + ' is already booked for the selected dates' });
+    }
+
+    // No overlap — insert the booking
+    const insertQuery = `
+      INSERT INTO bookings (guest_name, guest_phone, room_number, check_in_date, check_out_date)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    db.run(insertQuery, [guest_name, guest_phone, room_number, check_in_date, check_out_date], function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create booking' });
+      }
+      res.status(201).json({ id: this.lastID, message: 'Booking created successfully' });
     });
-  } catch (err) {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
-  }
-}
+  });
+});
 
-bootstrap();
+// DELETE /api/bookings/:id - Delete a booking
+app.delete('/api/bookings/:id', (req, res) => {
+  const { id } = req.params;
 
-process.on('SIGINT', async () => {
-  await closeDatabase();
-  process.exit(0);
+  db.run('DELETE FROM bookings WHERE id = ?', [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to delete booking' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    res.json({ message: 'Booking deleted successfully' });
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log('Hotel Booking System running at http://localhost:' + PORT);
 });

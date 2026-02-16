@@ -1,11 +1,306 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0;url=/login" />
-    <title>Redirecting...</title>
-  </head>
-  <body>
-    <p>Redirecting to <a href="/login">/login</a>...</p>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #1a1a2e;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Booking Form */
+    .form-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-card h2 {
+      margin-bottom: 16px;
+      color: #16213e;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #555;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #0f3460;
+    }
+
+    .btn-book {
+      grid-column: 1 / -1;
+      padding: 10px;
+      background: #0f3460;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .btn-book:hover { background: #16213e; }
+
+    /* Messages */
+    .message {
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .message.success { display: block; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .message.error { display: block; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    /* Bookings Table */
+    .table-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .table-card h2 {
+      margin-bottom: 16px;
+      color: #16213e;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .btn-delete {
+      padding: 4px 12px;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn-delete:hover { background: #c0392b; }
+
+    .no-bookings {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Hotel Booking System</h1>
+
+    <div id="message" class="message"></div>
+
+    <div class="form-card">
+      <h2>New Booking</h2>
+      <form id="bookingForm" class="form-grid">
+        <div class="form-group">
+          <label for="guest_name">Guest Name</label>
+          <input type="text" id="guest_name" required placeholder="Full name">
+        </div>
+        <div class="form-group">
+          <label for="guest_phone">Phone (10 digits)</label>
+          <input type="tel" id="guest_phone" required pattern="\d{10}" maxlength="10" placeholder="1234567890">
+        </div>
+        <div class="form-group">
+          <label for="room_number">Room</label>
+          <select id="room_number" required>
+            <option value="">Select Room</option>
+            <option value="101">Room 101</option>
+            <option value="102">Room 102</option>
+            <option value="103">Room 103</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <!-- spacer for grid alignment -->
+        </div>
+        <div class="form-group">
+          <label for="check_in_date">Check-In</label>
+          <input type="date" id="check_in_date" required>
+        </div>
+        <div class="form-group">
+          <label for="check_out_date">Check-Out</label>
+          <input type="date" id="check_out_date" required>
+        </div>
+        <button type="submit" class="btn-book">Book Room</button>
+      </form>
+    </div>
+
+    <div class="table-card">
+      <h2>Current Bookings</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Guest</th>
+            <th>Room</th>
+            <th>Check-In</th>
+            <th>Check-Out</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="bookingsTable">
+          <tr><td colspan="6" class="no-bookings">No bookings yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const messageEl = document.getElementById('message');
+    const form = document.getElementById('bookingForm');
+    const tableBody = document.getElementById('bookingsTable');
+
+    function showMessage(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = 'message ' + type;
+      setTimeout(() => { messageEl.className = 'message'; }, 4000);
+    }
+
+    async function loadBookings() {
+      try {
+        const res = await fetch('/api/bookings');
+        const bookings = await res.json();
+
+        if (bookings.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="6" class="no-bookings">No bookings yet</td></tr>';
+          return;
+        }
+
+        tableBody.innerHTML = bookings.map(b => `
+          <tr>
+            <td>${b.id}</td>
+            <td>${b.guest_name}</td>
+            <td>${b.room_number}</td>
+            <td>${b.check_in_date}</td>
+            <td>${b.check_out_date}</td>
+            <td><button class="btn-delete" onclick="deleteBooking(${b.id})">Delete</button></td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showMessage('Failed to load bookings', 'error');
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        guest_name: document.getElementById('guest_name').value.trim(),
+        guest_phone: document.getElementById('guest_phone').value.trim(),
+        room_number: document.getElementById('room_number').value,
+        check_in_date: document.getElementById('check_in_date').value,
+        check_out_date: document.getElementById('check_out_date').value
+      };
+
+      try {
+        const res = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          showMessage('Booking created successfully!', 'success');
+          form.reset();
+          loadBookings();
+        } else {
+          showMessage(result.error, 'error');
+        }
+      } catch (err) {
+        showMessage('Failed to create booking', 'error');
+      }
+    });
+
+    async function deleteBooking(id) {
+      if (!confirm('Are you sure you want to delete this booking?')) return;
+
+      try {
+        const res = await fetch('/api/bookings/' + id, { method: 'DELETE' });
+        const result = await res.json();
+
+        if (res.ok) {
+          showMessage('Booking deleted', 'success');
+          loadBookings();
+        } else {
+          showMessage(result.error, 'error');
+        }
+      } catch (err) {
+        showMessage('Failed to delete booking', 'error');
+      }
+    }
+
+    // Load bookings on page load
+    loadBookings();
+  </script>
+</body>
 </html>
