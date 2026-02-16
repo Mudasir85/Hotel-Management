@@ -153,6 +153,26 @@
       color: #999;
     }
 
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 10px;
+    }
+
+    nav a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    nav a:hover { color: #fff; }
+    nav a.active { color: #fff; border-bottom-color: #fff; }
+
     @media (max-width: 600px) {
       .form-grid { grid-template-columns: 1fr; }
     }
@@ -161,6 +181,10 @@
 <body>
   <header>
     <h1>Hotel Booking System</h1>
+    <nav>
+      <a href="index.html" class="active">Home</a>
+      <a href="contact.html">Contact Us</a>
+    </nav>
   </header>
 
   <div class="container">
