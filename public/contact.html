@@ -14,35 +14,6 @@
       min-height: 100vh;
     }
 
-    header {
-      background: #1a73e8;
-      color: #fff;
-      padding: 20px 0;
-      text-align: center;
-    }
-
-    header h1 { font-size: 1.6rem; font-weight: 600; }
-
-    nav {
-      display: flex;
-      justify-content: center;
-      gap: 24px;
-      margin-top: 10px;
-    }
-
-    nav a {
-      color: rgba(255,255,255,0.85);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      padding: 4px 0;
-      border-bottom: 2px solid transparent;
-      transition: color 0.2s, border-color 0.2s;
-    }
-
-    nav a:hover { color: #fff; }
-    nav a.active { color: #fff; border-bottom-color: #fff; }
-
     .container {
       max-width: 960px;
       margin: 30px auto;
@@ -201,13 +172,7 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>Hotel Booking System</h1>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="contact.html" class="active">Contact Us</a>
-    </nav>
-  </header>
+  <div id="app-navbar"></div>
 
   <div class="container">
     <div id="message" class="message"></div>
@@ -284,7 +249,10 @@
     &copy; 2026 Hotel Booking System. All rights reserved.
   </footer>
 
+  <script src="/app.js"></script>
   <script>
+    if (!initAppPage('contact')) throw new Error('Not authenticated');
+
     const form = document.getElementById('contactForm');
     const messageEl = document.getElementById('message');
 
