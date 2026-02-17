@@ -49,7 +49,6 @@ const Auth = {
 
 // ─── Sidebar Renderer ───────────────────────────────────────────
 function renderSidebar(activePage) {
-  const user = Auth.getUser();
   const sidebar = document.getElementById('app-navbar');
   if (!sidebar) return;
 
@@ -70,16 +69,6 @@ function renderSidebar(activePage) {
           <span class="nav-icon">&#9993;</span> Contact
         </a>
       </nav>
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="sidebar-avatar">${user ? user.full_name.charAt(0).toUpperCase() : 'U'}</div>
-          <div class="sidebar-user-info">
-            <span class="sidebar-user-name">${user ? user.full_name : 'User'}</span>
-            <span class="sidebar-user-role">Administrator</span>
-          </div>
-        </div>
-        <button onclick="Auth.logout()" class="btn-logout">Logout</button>
-      </div>
     </div>
   `;
 }
@@ -92,19 +81,20 @@ function injectNavbarStyles() {
   style.id = 'navbar-styles';
   style.textContent = `
     /* ── Layout: sidebar + main ── */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
     body {
       display: flex;
       min-height: 100vh;
-      margin: 0;
     }
 
     #app-navbar {
       width: 250px;
-      min-height: 100vh;
       flex-shrink: 0;
-      position: sticky;
-      top: 0;
-      height: 100vh;
     }
 
     .sidebar {
@@ -124,8 +114,10 @@ function injectNavbarStyles() {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 20px 20px 16px;
+      padding: 0 20px;
+      height: 60px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
     }
 
     .sidebar-logo {
@@ -184,72 +176,14 @@ function injectNavbarStyles() {
       text-align: center;
     }
 
-    .sidebar-footer {
-      padding: 16px;
-      border-top: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .sidebar-user {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .sidebar-avatar {
-      width: 34px;
-      height: 34px;
-      background: #1a73e8;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.85rem;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-
-    .sidebar-user-info {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .sidebar-user-name {
-      font-size: 0.85rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .sidebar-user-role {
-      font-size: 0.75rem;
-      color: rgba(255,255,255,0.5);
-    }
-
-    .btn-logout {
-      width: 100%;
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.8);
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .btn-logout:hover {
-      background: rgba(255,255,255,0.15);
-      color: #fff;
-    }
-
     /* ── Main content area ── */
     .main-content {
       flex: 1;
       min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background: #f0f2f5;
     }
 
     @media (max-width: 768px) {
@@ -262,38 +196,18 @@ function injectNavbarStyles() {
       }
 
       .sidebar-brand span,
-      .sidebar-nav a span:not(.nav-icon),
-      .sidebar-user-info,
-      .sidebar-user-role {
+      .sidebar-nav a span:not(.nav-icon) {
         display: none;
       }
 
       .sidebar-brand {
         justify-content: center;
-        padding: 16px 8px;
+        padding: 0 8px;
       }
 
       .sidebar-nav a {
         justify-content: center;
         padding: 12px;
-      }
-
-      .sidebar-footer {
-        padding: 8px;
-      }
-
-      .sidebar-user {
-        justify-content: center;
-      }
-
-      .btn-logout {
-        font-size: 0;
-        padding: 8px;
-      }
-
-      .btn-logout::after {
-        content: '\\2192';
-        font-size: 1rem;
       }
     }
   `;
@@ -320,35 +234,42 @@ function renderHeader() {
   const header = document.createElement('div');
   header.className = 'top-header';
   header.innerHTML = `
-    <div class="top-header-spacer"></div>
-    <div class="top-header-user" id="userDropdownToggle">
-      <div class="top-header-avatar">${initials}</div>
-      <svg class="top-header-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <div class="user-dropdown" id="userDropdown">
-        <div class="user-dropdown-header">
-          <div class="user-dropdown-avatar">${initials}</div>
-          <div class="user-dropdown-info">
-            <span class="user-dropdown-name">${fullName}</span>
-            <span class="user-dropdown-email">${email}</span>
+    <div class="top-header-title">Hotel Booking & Reservation</div>
+    <div class="top-header-right">
+      <div class="top-header-user" id="userDropdownToggle">
+        <div class="top-header-avatar">${initials}</div>
+        <span class="top-header-name">${fullName}</span>
+        <svg class="top-header-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="user-dropdown" id="userDropdown">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-avatar">${initials}</div>
+            <div class="user-dropdown-info">
+              <span class="user-dropdown-name">${fullName}</span>
+              <span class="user-dropdown-email">${email}</span>
+            </div>
           </div>
+          <div class="user-dropdown-divider"></div>
+          <a href="#" class="user-dropdown-item" onclick="event.preventDefault();">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Profile
+          </a>
+          <a href="#" class="user-dropdown-item" onclick="event.preventDefault();">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Settings
+          </a>
+          <div class="user-dropdown-divider"></div>
+          <a href="#" class="user-dropdown-item user-dropdown-signout" onclick="event.preventDefault(); Auth.logout();">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6M10.5 11.5L14 8l-3.5-3.5M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Sign Out
+          </a>
         </div>
-        <div class="user-dropdown-divider"></div>
-        <a href="#" class="user-dropdown-item" onclick="event.preventDefault();">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-          Profile
-        </a>
-        <a href="#" class="user-dropdown-item" onclick="event.preventDefault();">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-          Settings
-        </a>
-        <div class="user-dropdown-divider"></div>
-        <a href="#" class="user-dropdown-item user-dropdown-signout" onclick="event.preventDefault(); Auth.logout();">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6M10.5 11.5L14 8l-3.5-3.5M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Sign Out
-        </a>
       </div>
+      <button onclick="Auth.logout()" class="top-header-logout">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6M10.5 11.5L14 8l-3.5-3.5M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Logout
+      </button>
     </div>
   `;
 
@@ -386,24 +307,35 @@ function injectHeaderStyles() {
     .top-header {
       display: flex;
       align-items: center;
-      justify-content: flex-end;
-      padding: 12px 24px;
-      background: #fff;
-      border-bottom: 1px solid #e9ecef;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 60px;
+      background: #1e293b;
+      color: #fff;
       position: sticky;
       top: 0;
       z-index: 900;
+      flex-shrink: 0;
     }
 
-    .top-header-spacer {
-      flex: 1;
+    .top-header-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.2px;
+    }
+
+    .top-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
 
     .top-header-user {
       position: relative;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 8px;
@@ -411,31 +343,62 @@ function injectHeaderStyles() {
     }
 
     .top-header-user:hover {
-      background: #f0f2f5;
+      background: rgba(255,255,255,0.08);
     }
 
     .top-header-avatar {
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       background: #1a73e8;
       color: #fff;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 600;
       flex-shrink: 0;
       letter-spacing: 0.5px;
     }
 
+    .top-header-name {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
+      white-space: nowrap;
+    }
+
     .top-header-chevron {
-      color: #666;
+      color: rgba(255,255,255,0.5);
       transition: transform 0.2s;
     }
 
     .top-header-user:hover .top-header-chevron {
-      color: #333;
+      color: #fff;
+    }
+
+    .top-header-logout {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .top-header-logout:hover {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+
+    .top-header-logout svg {
+      flex-shrink: 0;
     }
 
     /* ── User Dropdown ── */
@@ -447,7 +410,7 @@ function injectHeaderStyles() {
       width: 260px;
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
       overflow: hidden;
       z-index: 950;
     }
@@ -539,7 +502,19 @@ function injectHeaderStyles() {
 
     @media (max-width: 768px) {
       .top-header {
-        padding: 10px 16px;
+        padding: 0 16px;
+      }
+
+      .top-header-name {
+        display: none;
+      }
+
+      .top-header-title {
+        font-size: 0.9rem;
+      }
+
+      .top-header-logout span {
+        display: none;
       }
 
       .user-dropdown {
