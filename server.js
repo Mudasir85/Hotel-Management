@@ -10,7 +10,7 @@ const JWT_SECRET = 'hotel-booking-secret-key-change-in-production';
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // Database setup
 const db = new sqlite3.Database('./bookings.db', (err) => {
@@ -352,7 +352,7 @@ app.get('/bookings/:id', (req, res) => {
 
 // Root redirects to login
 app.get('/', (req, res) => {
-  res.redirect('/login');
+  res.redirect('/sitesh/login');
 });
 
 // Start server

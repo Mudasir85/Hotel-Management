@@ -141,15 +141,15 @@
     <div class="card">
       <h2>Quick Actions</h2>
       <div class="quick-actions">
-        <a href="/dashboard/bookings" class="action-btn">
+        <a href="/sitesh/dashboard/bookings" class="action-btn">
           <span class="action-icon">+</span>
           <span>New Booking</span>
         </a>
-        <a href="/dashboard/bookings" class="action-btn">
+        <a href="/sitesh/dashboard/bookings" class="action-btn">
           <span class="action-icon">&#x1f4cb;</span>
           <span>View All Bookings</span>
         </a>
-        <a href="/dashboard/contact" class="action-btn">
+        <a href="/sitesh/dashboard/contact" class="action-btn">
           <span class="action-icon">&#x2709;</span>
           <span>Contact Support</span>
         </a>
@@ -162,7 +162,7 @@
   </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/sitesh/app.js"></script>
   <script>
     if (!initAppPage('dashboard')) throw new Error('Not authenticated');
 
@@ -175,7 +175,7 @@
     // Load dashboard stats
     async function loadStats() {
       try {
-        const res = await fetch('/api/dashboard/stats', { headers: Auth.headers() });
+        const res = await fetch(BASE + '/api/dashboard/stats', { headers: Auth.headers() });
 
         if (res.status === 401 || res.status === 403) {
           Auth.logout();

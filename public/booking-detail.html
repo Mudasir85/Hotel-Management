@@ -85,14 +85,14 @@
 
   <div class="main-content">
     <div class="container">
-      <a href="/dashboard/bookings" class="back-link">&larr; Back to Bookings</a>
+      <a href="/sitesh/dashboard/bookings" class="back-link">&larr; Back to Bookings</a>
       <div class="card" id="bookingDetail">
         <div class="loading">Loading booking details...</div>
       </div>
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/sitesh/app.js"></script>
   <script>
     if (!initAppPage('bookings')) throw new Error('Not authenticated');
 
@@ -101,7 +101,7 @@
 
     async function loadBooking() {
       try {
-        const res = await fetch(`/api/bookings/${bookingId}`, { headers: Auth.headers() });
+        const res = await fetch(`${BASE}/api/bookings/${bookingId}`, { headers: Auth.headers() });
 
         if (res.status === 401 || res.status === 403) {
           Auth.logout();

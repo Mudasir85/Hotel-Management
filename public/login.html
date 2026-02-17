@@ -220,9 +220,11 @@
   </div>
 
   <script>
+    const BASE = '/sitesh';
+
     // Redirect if already logged in
     if (localStorage.getItem('token')) {
-      window.location.href = '/dashboard';
+      window.location.href = BASE + '/dashboard';
     }
 
     const messageEl = document.getElementById('message');
@@ -249,7 +251,7 @@
       btn.textContent = 'Signing in...';
 
       try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch(BASE + '/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -267,7 +269,7 @@
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/dashboard';
+        window.location.href = BASE + '/dashboard';
       } catch {
         showMessage('Connection failed. Please try again.', 'error');
       } finally {
@@ -283,7 +285,7 @@
       btn.textContent = 'Creating account...';
 
       try {
-        const res = await fetch('/api/auth/register', {
+        const res = await fetch(BASE + '/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -302,7 +304,7 @@
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/dashboard';
+        window.location.href = BASE + '/dashboard';
       } catch {
         showMessage('Connection failed. Please try again.', 'error');
       } finally {
