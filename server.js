@@ -243,6 +243,74 @@ app.post('/api/bookings', authenticateToken, (req, res) => {
   });
 });
 
+// GET /api/bookings/:id - Get a single booking
+app.get('/api/bookings/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.get('SELECT * FROM bookings WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch booking' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    res.json(row);
+  });
+});
+
+// PUT /api/bookings/:id - Update a booking
+app.put('/api/bookings/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { guest_name, guest_phone, room_number, check_in_date, check_out_date } = req.body;
+
+  if (!guest_name || !guest_phone || !room_number || !check_in_date || !check_out_date) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  if (!/^\d{10}$/.test(guest_phone)) {
+    return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
+  }
+
+  if (check_out_date <= check_in_date) {
+    return res.status(400).json({ error: 'Check-out date must be after check-in date' });
+  }
+
+  // Double-booking check (exclude current booking)
+  const overlapQuery = `
+    SELECT id FROM bookings
+    WHERE room_number = ?
+      AND check_in_date < ?
+      AND check_out_date > ?
+      AND id != ?
+  `;
+
+  db.get(overlapQuery, [room_number, check_out_date, check_in_date, id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to check availability' });
+    }
+
+    if (row) {
+      return res.status(409).json({ error: `Room ${room_number} is already booked for the selected dates` });
+    }
+
+    const updateQuery = `
+      UPDATE bookings
+      SET guest_name = ?, guest_phone = ?, room_number = ?, check_in_date = ?, check_out_date = ?
+      WHERE id = ?
+    `;
+
+    db.run(updateQuery, [guest_name, guest_phone, room_number, check_in_date, check_out_date, id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update booking' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+      res.json({ id: Number(id), guest_name, guest_phone, room_number, check_in_date, check_out_date });
+    });
+  });
+});
+
 // DELETE /api/bookings/:id - Delete a booking
 app.delete('/api/bookings/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
@@ -276,6 +344,10 @@ app.get('/dashboard/bookings', (req, res) => {
 
 app.get('/dashboard/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
+});
+
+app.get('/bookings/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'booking-detail.html'));
 });
 
 // Root redirects to login

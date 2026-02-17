@@ -95,6 +95,32 @@
 
     .btn-danger:hover { background: #b02a37; }
 
+    .btn-view {
+      background: #6c757d;
+      color: #fff;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      text-decoration: none;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .btn-view:hover { background: #565e64; }
+
+    .btn-edit {
+      background: #0d6efd;
+      color: #fff;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+    }
+
+    .btn-edit:hover { background: #0a58ca; }
+
+    .action-btns {
+      display: flex;
+      gap: 6px;
+    }
+
     .message {
       padding: 12px 16px;
       border-radius: 6px;
@@ -144,34 +170,136 @@
       color: #999;
     }
 
+    /* Edit Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .modal h2 {
+      font-size: 1.2rem;
+      color: #1a73e8;
+      margin-bottom: 20px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: #fff;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover { background: #565e64; }
+
     @media (max-width: 600px) {
       .form-grid { grid-template-columns: 1fr; }
+      .action-btns { flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <div id="app-navbar"></div>
 
-  <div class="container">
-    <!-- Message Banner -->
-    <div id="message" class="message"></div>
+  <div class="main-content">
+    <div class="container">
+      <!-- Message Banner -->
+      <div id="message" class="message"></div>
 
-    <!-- Booking Form -->
-    <div class="card">
-      <h2>New Booking</h2>
-      <form id="bookingForm">
+      <!-- Booking Form -->
+      <div class="card">
+        <h2>New Booking</h2>
+        <form id="bookingForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="guestName">Guest Name</label>
+              <input type="text" id="guestName" required placeholder="Full name">
+            </div>
+            <div class="form-group">
+              <label for="guestPhone">Phone (10 digits)</label>
+              <input type="tel" id="guestPhone" required pattern="\d{10}" maxlength="10" placeholder="0000000000">
+            </div>
+            <div class="form-group">
+              <label for="roomNumber">Room</label>
+              <select id="roomNumber" required>
+                <option value="">Select Room</option>
+                <option value="101">Room 101</option>
+                <option value="102">Room 102</option>
+                <option value="103">Room 103</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>&nbsp;</label>
+            </div>
+            <div class="form-group">
+              <label for="checkIn">Check-In</label>
+              <input type="date" id="checkIn" required>
+            </div>
+            <div class="form-group">
+              <label for="checkOut">Check-Out</label>
+              <input type="date" id="checkOut" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Book Room</button>
+        </form>
+      </div>
+
+      <!-- Bookings Table -->
+      <div class="card">
+        <h2>Current Bookings</h2>
+        <div id="bookingsContainer">
+          <div class="empty-state">Loading bookings...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Booking Modal -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal">
+      <h2>Edit Booking #<span id="editBookingId"></span></h2>
+      <form id="editForm">
         <div class="form-grid">
           <div class="form-group">
-            <label for="guestName">Guest Name</label>
-            <input type="text" id="guestName" required placeholder="Full name">
+            <label for="editGuestName">Guest Name</label>
+            <input type="text" id="editGuestName" required placeholder="Full name">
           </div>
           <div class="form-group">
-            <label for="guestPhone">Phone (10 digits)</label>
-            <input type="tel" id="guestPhone" required pattern="\d{10}" maxlength="10" placeholder="0000000000">
+            <label for="editGuestPhone">Phone (10 digits)</label>
+            <input type="tel" id="editGuestPhone" required pattern="\d{10}" maxlength="10" placeholder="0000000000">
           </div>
           <div class="form-group">
-            <label for="roomNumber">Room</label>
-            <select id="roomNumber" required>
+            <label for="editRoomNumber">Room</label>
+            <select id="editRoomNumber" required>
               <option value="">Select Room</option>
               <option value="101">Room 101</option>
               <option value="102">Room 102</option>
@@ -182,24 +310,19 @@
             <label>&nbsp;</label>
           </div>
           <div class="form-group">
-            <label for="checkIn">Check-In</label>
-            <input type="date" id="checkIn" required>
+            <label for="editCheckIn">Check-In</label>
+            <input type="date" id="editCheckIn" required>
           </div>
           <div class="form-group">
-            <label for="checkOut">Check-Out</label>
-            <input type="date" id="checkOut" required>
+            <label for="editCheckOut">Check-Out</label>
+            <input type="date" id="editCheckOut" required>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary">Book Room</button>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary" style="margin-top:0">Save Changes</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+        </div>
       </form>
-    </div>
-
-    <!-- Bookings Table -->
-    <div class="card">
-      <h2>Current Bookings</h2>
-      <div id="bookingsContainer">
-        <div class="empty-state">Loading bookings...</div>
-      </div>
     </div>
   </div>
 
@@ -257,7 +380,13 @@
             <td>${b.room_number}</td>
             <td>${b.check_in_date}</td>
             <td>${b.check_out_date}</td>
-            <td><button class="btn btn-danger" onclick="deleteBooking(${b.id})">Delete</button></td>
+            <td>
+              <div class="action-btns">
+                <a href="/bookings/${b.id}" class="btn btn-view">View</a>
+                <button class="btn btn-edit" onclick="openEditModal(${b.id})">Edit</button>
+                <button class="btn btn-danger" onclick="deleteBooking(${b.id})">Delete</button>
+              </div>
+            </td>
           </tr>
         `).join('');
 
@@ -271,7 +400,7 @@
                 <th>Room</th>
                 <th>Check-In</th>
                 <th>Check-Out</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -346,6 +475,79 @@
         showMessage('Failed to delete booking.', 'error');
       }
     }
+
+    // ─── Edit Modal ─────────────────────────────────────────────
+    let editingId = null;
+
+    async function openEditModal(id) {
+      try {
+        const res = await fetch(`${API}/${id}`, { headers: Auth.headers() });
+        if (!res.ok) {
+          showMessage('Failed to load booking details.', 'error');
+          return;
+        }
+        const b = await res.json();
+        editingId = b.id;
+        document.getElementById('editBookingId').textContent = b.id;
+        document.getElementById('editGuestName').value = b.guest_name;
+        document.getElementById('editGuestPhone').value = b.guest_phone;
+        document.getElementById('editRoomNumber').value = b.room_number;
+        document.getElementById('editCheckIn').value = b.check_in_date;
+        document.getElementById('editCheckOut').value = b.check_out_date;
+        document.getElementById('editModal').classList.add('open');
+      } catch {
+        showMessage('Failed to load booking details.', 'error');
+      }
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.remove('open');
+      editingId = null;
+    }
+
+    // Close modal on overlay click
+    document.getElementById('editModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeEditModal();
+    });
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!editingId) return;
+
+      const data = {
+        guest_name: document.getElementById('editGuestName').value.trim(),
+        guest_phone: document.getElementById('editGuestPhone').value.trim(),
+        room_number: document.getElementById('editRoomNumber').value,
+        check_in_date: document.getElementById('editCheckIn').value,
+        check_out_date: document.getElementById('editCheckOut').value
+      };
+
+      try {
+        const res = await fetch(`${API}/${editingId}`, {
+          method: 'PUT',
+          headers: Auth.headers(),
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.status === 401 || res.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!res.ok) {
+          showMessage(result.error, 'error');
+          return;
+        }
+
+        closeEditModal();
+        showMessage(`Booking #${editingId} updated successfully`, 'success');
+        loadBookings();
+      } catch {
+        showMessage('Failed to update booking.', 'error');
+      }
+    });
 
     // Initial load
     loadBookings();
