@@ -326,11 +326,11 @@
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/sitesh/app.js"></script>
   <script>
     if (!initAppPage('bookings')) throw new Error('Not authenticated');
 
-    const API = '/api/bookings';
+    const API = BASE + '/api/bookings';
     const messageEl = document.getElementById('message');
     const form = document.getElementById('bookingForm');
     const container = document.getElementById('bookingsContainer');

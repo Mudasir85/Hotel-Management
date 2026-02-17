@@ -1,3 +1,5 @@
+const BASE = '/sitesh';
+
 // ─── Auth Utilities ───────────────────────────────────────────────
 const Auth = {
   getToken() {
@@ -33,7 +35,7 @@ const Auth = {
   // Redirect to login if not authenticated
   requireAuth() {
     if (!this.isLoggedIn()) {
-      window.location.href = '/login';
+      window.location.href = BASE + '/login';
       return false;
     }
     return true;
@@ -41,7 +43,7 @@ const Auth = {
 
   logout() {
     this.clear();
-    window.location.href = '/login';
+    window.location.href = BASE + '/login';
   }
 };
 
