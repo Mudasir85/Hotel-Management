@@ -60,13 +60,13 @@ function renderSidebar(activePage) {
         <span>Hotel Booking</span>
       </div>
       <nav class="sidebar-nav">
-        <a href="/dashboard" class="${activePage === 'dashboard' ? 'active' : ''}">
+        <a href="${BASE}/dashboard" class="${activePage === 'dashboard' ? 'active' : ''}">
           <span class="nav-icon">&#9632;</span> Dashboard
         </a>
-        <a href="/dashboard/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
           <span class="nav-icon">&#128203;</span> Bookings
         </a>
-        <a href="/dashboard/contact" class="${activePage === 'contact' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/contact" class="${activePage === 'contact' ? 'active' : ''}">
           <span class="nav-icon">&#9993;</span> Contact
         </a>
       </nav>

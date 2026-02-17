@@ -382,7 +382,7 @@
             <td>${b.check_out_date}</td>
             <td>
               <div class="action-btns">
-                <a href="/bookings/${b.id}" class="btn btn-view">View</a>
+                <a href="${BASE}/bookings/${b.id}" class="btn btn-view">View</a>
                 <button class="btn btn-edit" onclick="openEditModal(${b.id})">Edit</button>
                 <button class="btn btn-danger" onclick="deleteBooking(${b.id})">Delete</button>
               </div>
