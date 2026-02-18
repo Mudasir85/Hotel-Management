@@ -62,8 +62,20 @@ function renderSidebar(activePage) {
         <a href="${BASE}/dashboard" class="${activePage === 'dashboard' ? 'active' : ''}">
           <span class="nav-icon">&#9632;</span> Dashboard
         </a>
+        <a href="${BASE}/dashboard/rooms" class="${activePage === 'rooms' ? 'active' : ''}">
+          <span class="nav-icon">&#127968;</span> Our Rooms
+        </a>
         <a href="${BASE}/dashboard/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
           <span class="nav-icon">&#128203;</span> Bookings
+        </a>
+        <a href="${BASE}/dashboard/about" class="${activePage === 'about' ? 'active' : ''}">
+          <span class="nav-icon">&#8505;</span> About Us
+        </a>
+        <a href="${BASE}/dashboard/gallery" class="${activePage === 'gallery' ? 'active' : ''}">
+          <span class="nav-icon">&#128247;</span> Gallery
+        </a>
+        <a href="${BASE}/dashboard/blogs" class="${activePage === 'blogs' ? 'active' : ''}">
+          <span class="nav-icon">&#128240;</span> Blogs
         </a>
         <a href="${BASE}/dashboard/contact" class="${activePage === 'contact' ? 'active' : ''}">
           <span class="nav-icon">&#9993;</span> Contact

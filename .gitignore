@@ -2,3 +2,5 @@ node_modules/
 bookings.db
 *.db
 .env
+
+.chat_images/

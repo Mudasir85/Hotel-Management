@@ -342,6 +342,22 @@ app.get('/dashboard/bookings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+app.get('/dashboard/rooms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'rooms.html'));
+});
+
+app.get('/dashboard/about', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'about.html'));
+});
+
+app.get('/dashboard/gallery', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
+});
+
+app.get('/dashboard/blogs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blogs.html'));
+});
+
 app.get('/dashboard/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
 });

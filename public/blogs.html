@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blogs - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    .container {
+      flex: 1;
+      padding: 24px;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .page-header p {
+      font-size: 0.95rem;
+      color: #666;
+    }
+
+    /* Blog Grid */
+    .blogs-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .blog-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .blog-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .blog-image {
+      width: 100%;
+      height: 200px;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .blog-body {
+      padding: 20px;
+    }
+
+    .blog-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .blog-category {
+      padding: 3px 10px;
+      background: #f0f4ff;
+      color: #1a73e8;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .blog-date {
+      font-size: 0.8rem;
+      color: #999;
+    }
+
+    .blog-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    .blog-excerpt {
+      font-size: 0.88rem;
+      color: #666;
+      line-height: 1.5;
+      margin-bottom: 16px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .blog-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .blog-author {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .blog-author-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .blog-author-name {
+      font-size: 0.82rem;
+      color: #555;
+      font-weight: 500;
+    }
+
+    .btn-read-more {
+      padding: 6px 16px;
+      background: transparent;
+      color: #1a73e8;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-read-more:hover {
+      background: #1a73e8;
+      color: #fff;
+    }
+
+    /* Blog Detail Modal */
+    .blog-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .blog-modal-overlay.open {
+      display: flex;
+    }
+
+    .blog-modal {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 700px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .blog-modal-image {
+      width: 100%;
+      height: 260px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 12px 12px 0 0;
+    }
+
+    .blog-modal-body {
+      padding: 28px;
+    }
+
+    .blog-modal-body h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .blog-modal-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .blog-modal-content {
+      font-size: 0.95rem;
+      color: #555;
+      line-height: 1.8;
+    }
+
+    .blog-modal-content p {
+      margin-bottom: 14px;
+    }
+
+    .blog-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .blog-modal-close:hover {
+      background: rgba(0,0,0,0.7);
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #999;
+      font-size: 0.85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .blogs-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .blogs-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .blog-modal-image {
+        height: 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h1>Blog</h1>
+        <p>Travel tips, hotel news, and hospitality insights</p>
+      </div>
+
+      <div class="blogs-grid" id="blogsGrid"></div>
+    </div>
+
+    <footer>
+      &copy; 2026 Grand Hotel Booking System. All rights reserved.
+    </footer>
+  </div>
+
+  <!-- Blog Detail Modal -->
+  <div class="blog-modal-overlay" id="blogModal">
+    <div class="blog-modal" id="blogModalContent" style="position:relative;">
+      <button class="blog-modal-close" onclick="closeBlogModal()">&times;</button>
+      <div class="blog-modal-image" id="blogModalImage"></div>
+      <div class="blog-modal-body">
+        <h2 id="blogModalTitle"></h2>
+        <div class="blog-modal-meta">
+          <span id="blogModalAuthor"></span>
+          <span>|</span>
+          <span id="blogModalDate"></span>
+        </div>
+        <div class="blog-modal-content" id="blogModalText"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('blogs')) throw new Error('Not authenticated');
+
+    const blogs = [
+      {
+        id: 1,
+        title: '10 Tips for the Perfect Hotel Stay',
+        excerpt: 'Make the most of your next hotel experience with these insider tips from our hospitality experts. From early check-in strategies to room selection advice.',
+        content: '<p>Traveling can be both exciting and exhausting. Here are our top 10 tips to ensure your hotel stay is nothing short of perfect.</p><p><strong>1. Book Direct:</strong> Booking directly through the hotel website often gives you the best rates and perks like free upgrades.</p><p><strong>2. Join the Loyalty Program:</strong> Most hotels offer loyalty programs that provide exclusive discounts, late check-outs, and room upgrades.</p><p><strong>3. Request a Corner Room:</strong> Corner rooms tend to be larger and quieter than rooms in the middle of a hallway.</p><p><strong>4. Arrive Early:</strong> Getting to the hotel early in the day increases your chances of getting an upgraded room.</p><p><strong>5. Be Kind to Staff:</strong> A little kindness goes a long way. Hotel staff are more likely to go above and beyond for friendly guests.</p>',
+        image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop',
+        date: 'Feb 15, 2026',
+        author: 'Sarah Mitchell',
+        authorInitials: 'SM',
+        category: 'Travel Tips'
+      },
+      {
+        id: 2,
+        title: 'The Art of Luxury Hospitality',
+        excerpt: 'Discover what sets luxury hotels apart from the rest. We explore the philosophy behind five-star service and attention to detail.',
+        content: '<p>Luxury hospitality is not just about expensive furnishings or premium amenities. It is an art form that requires dedication, attention to detail, and genuine passion for service.</p><p>At its core, luxury hospitality is about anticipation. The best hotels anticipate their guests\' needs before they even arise. From remembering a returning guest\'s preferred room temperature to having their favorite newspaper ready at breakfast.</p><p>It is the small details that make the biggest difference: a handwritten welcome note, turndown service with artisan chocolates, or a staff member who remembers your name after a single interaction.</p>',
+        image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=600&h=400&fit=crop',
+        date: 'Feb 10, 2026',
+        author: 'James Carter',
+        authorInitials: 'JC',
+        category: 'Hospitality'
+      },
+      {
+        id: 3,
+        title: 'Sustainable Tourism: Our Green Initiative',
+        excerpt: 'Learn about our commitment to environmental sustainability and the steps we are taking to reduce our carbon footprint.',
+        content: '<p>Sustainability is no longer optional in the hospitality industry - it is essential. At Grand Hotel, we have embraced this responsibility with open arms and a clear vision for a greener future.</p><p><strong>Energy Efficiency:</strong> We have invested in solar panels, LED lighting, and smart room systems that automatically reduce energy consumption when rooms are unoccupied.</p><p><strong>Water Conservation:</strong> Our towel and linen reuse programs, along with low-flow fixtures, have reduced water consumption by 30% over the past two years.</p><p><strong>Waste Reduction:</strong> We have eliminated single-use plastics from our rooms and restaurants, replacing them with biodegradable and reusable alternatives.</p>',
+        image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=400&fit=crop',
+        date: 'Feb 5, 2026',
+        author: 'Emily Laurent',
+        authorInitials: 'EL',
+        category: 'Sustainability'
+      },
+      {
+        id: 4,
+        title: 'Culinary Delights: A Chef\'s Perspective',
+        excerpt: 'Head Chef Robert Park shares his journey and the culinary philosophy behind our award-winning restaurant.',
+        content: '<p>Food is more than sustenance - it is an experience, a memory, a story on a plate. As the Head Chef at Grand Hotel, I have spent over 15 years perfecting the art of creating dishes that not only satisfy hunger but create lasting memories.</p><p>Our menu draws inspiration from global flavors while celebrating local ingredients. Every dish tells a story of tradition meeting innovation.</p><p>From our signature truffle risotto to the delicate flavors of our seasonal tasting menu, each plate is crafted with passion and precision. We source 80% of our ingredients from local farms within a 50-mile radius.</p>',
+        image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop',
+        date: 'Jan 28, 2026',
+        author: 'Robert Park',
+        authorInitials: 'RP',
+        category: 'Dining'
+      },
+      {
+        id: 5,
+        title: 'Top 5 Destinations for 2026',
+        excerpt: 'Our travel experts reveal the hottest destinations to visit this year. From hidden gems to trending cities, plan your next adventure.',
+        content: '<p>2026 is shaping up to be an incredible year for travel. Here are our top picks for destinations that should be on your radar.</p><p><strong>1. Kyoto, Japan:</strong> Experience the perfect blend of ancient tradition and modern innovation. Cherry blossom season in spring is breathtaking.</p><p><strong>2. Algarve, Portugal:</strong> Stunning coastal cliffs, golden beaches, and some of the best seafood in Europe.</p><p><strong>3. Maldives:</strong> For the ultimate in luxury and relaxation, the overwater bungalows and crystal-clear waters are unmatched.</p><p><strong>4. Patagonia, Argentina:</strong> For adventure seekers, the dramatic landscapes and glaciers offer unforgettable experiences.</p><p><strong>5. Santorini, Greece:</strong> The iconic white-washed buildings and sunset views never get old.</p>',
+        image: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=600&h=400&fit=crop',
+        date: 'Jan 20, 2026',
+        author: 'Sarah Mitchell',
+        authorInitials: 'SM',
+        category: 'Travel Tips'
+      },
+      {
+        id: 6,
+        title: 'The Rise of Wellness Tourism',
+        excerpt: 'Explore how wellness travel is transforming the hospitality industry and why more travelers are prioritizing health-focused getaways.',
+        content: '<p>Wellness tourism has seen explosive growth in recent years, and 2026 is no exception. More travelers than ever are seeking experiences that nourish both body and mind.</p><p>At Grand Hotel, we have expanded our wellness offerings to meet this growing demand. Our spa now features thermal pools, meditation gardens, and personalized wellness programs designed by certified health professionals.</p><p>From yoga retreats to digital detox weekends, we offer a range of experiences that help guests disconnect from the stresses of everyday life and reconnect with themselves.</p>',
+        image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&h=400&fit=crop',
+        date: 'Jan 12, 2026',
+        author: 'Emily Laurent',
+        authorInitials: 'EL',
+        category: 'Wellness'
+      }
+    ];
+
+    function renderBlogs() {
+      const grid = document.getElementById('blogsGrid');
+      grid.innerHTML = blogs.map(blog => `
+        <div class="blog-card">
+          <div class="blog-image" style="background-image: url('${blog.image}')"></div>
+          <div class="blog-body">
+            <div class="blog-meta">
+              <span class="blog-category">${blog.category}</span>
+              <span class="blog-date">${blog.date}</span>
+            </div>
+            <div class="blog-title">${blog.title}</div>
+            <div class="blog-excerpt">${blog.excerpt}</div>
+            <div class="blog-footer">
+              <div class="blog-author">
+                <div class="blog-author-avatar">${blog.authorInitials}</div>
+                <span class="blog-author-name">${blog.author}</span>
+              </div>
+              <button class="btn-read-more" onclick="openBlogModal(${blog.id})">Read More</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openBlogModal(id) {
+      const blog = blogs.find(b => b.id === id);
+      if (!blog) return;
+
+      document.getElementById('blogModalImage').style.backgroundImage = `url('${blog.image}')`;
+      document.getElementById('blogModalTitle').textContent = blog.title;
+      document.getElementById('blogModalAuthor').textContent = blog.author;
+      document.getElementById('blogModalDate').textContent = blog.date;
+      document.getElementById('blogModalText').innerHTML = blog.content;
+      document.getElementById('blogModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeBlogModal() {
+      document.getElementById('blogModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Close modal on overlay click
+    document.getElementById('blogModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeBlogModal();
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeBlogModal();
+    });
+
+    renderBlogs();
+  </script>
+</body>
+</html>

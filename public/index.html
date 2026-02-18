@@ -140,6 +140,52 @@
       border: 1px solid #f5c6cb;
     }
 
+    /* Pre-selected room info banner */
+    .room-info-banner {
+      display: none;
+      padding: 14px 18px;
+      background: #e8f0fe;
+      border: 1px solid #c5d9f7;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .room-info-banner.visible {
+      display: flex;
+    }
+
+    .room-info-banner .rib-icon {
+      font-size: 1.5rem;
+    }
+
+    .room-info-banner .rib-details {
+      flex: 1;
+    }
+
+    .room-info-banner .rib-details strong {
+      color: #1a73e8;
+    }
+
+    .room-info-banner .rib-details span {
+      font-size: 0.88rem;
+      color: #555;
+    }
+
+    .room-info-banner .rib-dismiss {
+      background: none;
+      border: none;
+      color: #999;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 4px;
+    }
+
+    .room-info-banner .rib-dismiss:hover {
+      color: #333;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -234,6 +280,16 @@
       <!-- Message Banner -->
       <div id="message" class="message"></div>
 
+      <!-- Pre-selected Room Info -->
+      <div class="room-info-banner" id="roomInfoBanner">
+        <span class="rib-icon">&#127968;</span>
+        <div class="rib-details">
+          <strong id="ribRoomType"></strong><br>
+          <span>Room <span id="ribRoomNumber"></span> &middot; <span id="ribPrice"></span>/night</span>
+        </div>
+        <button class="rib-dismiss" onclick="dismissRoomBanner()" title="Dismiss">&times;</button>
+      </div>
+
       <!-- Booking Form -->
       <div class="card">
         <h2>New Booking</h2>
@@ -251,9 +307,12 @@
               <label for="roomNumber">Room</label>
               <select id="roomNumber" required>
                 <option value="">Select Room</option>
-                <option value="101">Room 101</option>
-                <option value="102">Room 102</option>
-                <option value="103">Room 103</option>
+                <option value="101">Room 101 - Standard</option>
+                <option value="102">Room 102 - Deluxe</option>
+                <option value="103">Room 103 - Suite</option>
+                <option value="201">Room 201 - Family</option>
+                <option value="202">Room 202 - Executive</option>
+                <option value="203">Room 203 - Penthouse</option>
               </select>
             </div>
             <div class="form-group">
@@ -300,9 +359,12 @@
             <label for="editRoomNumber">Room</label>
             <select id="editRoomNumber" required>
               <option value="">Select Room</option>
-              <option value="101">Room 101</option>
-              <option value="102">Room 102</option>
-              <option value="103">Room 103</option>
+              <option value="101">Room 101 - Standard</option>
+              <option value="102">Room 102 - Deluxe</option>
+              <option value="103">Room 103 - Suite</option>
+              <option value="201">Room 201 - Family</option>
+              <option value="202">Room 202 - Executive</option>
+              <option value="203">Room 203 - Penthouse</option>
             </select>
           </div>
           <div class="form-group">
@@ -333,6 +395,40 @@
     const messageEl = document.getElementById('message');
     const form = document.getElementById('bookingForm');
     const container = document.getElementById('bookingsContainer');
+
+    // Handle pre-selected room from "Book Now" on Rooms page
+    (function handleRoomPreselect() {
+      const params = new URLSearchParams(window.location.search);
+      const roomNumber = params.get('roomNumber');
+      const roomType = params.get('roomType');
+      const price = params.get('price');
+
+      if (roomNumber) {
+        const roomSelect = document.getElementById('roomNumber');
+        // Set the room dropdown value
+        for (let opt of roomSelect.options) {
+          if (opt.value === roomNumber) {
+            opt.selected = true;
+            break;
+          }
+        }
+
+        // Show info banner
+        if (roomType || price) {
+          document.getElementById('ribRoomType').textContent = roomType || 'Room ' + roomNumber;
+          document.getElementById('ribRoomNumber').textContent = roomNumber;
+          document.getElementById('ribPrice').textContent = price ? '$' + price : '';
+          document.getElementById('roomInfoBanner').classList.add('visible');
+        }
+
+        // Clean URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    })();
+
+    function dismissRoomBanner() {
+      document.getElementById('roomInfoBanner').classList.remove('visible');
+    }
 
     // Set minimum date to today
     const today = new Date().toISOString().split('T')[0];

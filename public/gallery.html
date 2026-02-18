@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gallery - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    .container {
+      flex: 1;
+      padding: 24px;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .page-header p {
+      font-size: 0.95rem;
+      color: #666;
+    }
+
+    /* Category Filters */
+    .gallery-filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 8px 20px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      background: #fff;
+      color: #555;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      border-color: #1a73e8;
+      color: #1a73e8;
+    }
+
+    .filter-btn.active {
+      background: #1a73e8;
+      color: #fff;
+      border-color: #1a73e8;
+    }
+
+    /* Gallery Grid */
+    .gallery-grid {
+      columns: 3;
+      column-gap: 16px;
+    }
+
+    .gallery-item {
+      break-inside: avoid;
+      margin-bottom: 16px;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .gallery-item:hover {
+      transform: scale(1.02);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      display: block;
+      border-radius: 10px;
+    }
+
+    .gallery-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      padding: 16px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .gallery-item:hover .gallery-overlay {
+      opacity: 1;
+    }
+
+    .gallery-overlay h4 {
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .gallery-overlay span {
+      color: rgba(255,255,255,0.8);
+      font-size: 0.78rem;
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 3000;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .lightbox.open {
+      display: flex;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      line-height: 1;
+      z-index: 3001;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    .lightbox-close:hover {
+      opacity: 1;
+    }
+
+    .lightbox-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #fff;
+      font-size: 2.5rem;
+      cursor: pointer;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      z-index: 3001;
+    }
+
+    .lightbox-nav:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .lightbox-prev { left: 20px; }
+    .lightbox-next { right: 20px; }
+
+    .lightbox-img {
+      max-width: 85vw;
+      max-height: 80vh;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+
+    .lightbox-caption {
+      color: #fff;
+      text-align: center;
+      margin-top: 16px;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .gallery-grid {
+        columns: 2;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .gallery-grid {
+        columns: 1;
+      }
+
+      .lightbox-nav {
+        width: 40px;
+        height: 40px;
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h1>Gallery</h1>
+        <p>Explore our beautiful hotel through stunning photographs</p>
+      </div>
+
+      <div class="gallery-filters" id="galleryFilters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="rooms">Rooms</button>
+        <button class="filter-btn" data-filter="dining">Dining</button>
+        <button class="filter-btn" data-filter="facilities">Facilities</button>
+      </div>
+
+      <div class="gallery-grid" id="galleryGrid"></div>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">&times;</button>
+    <button class="lightbox-nav lightbox-prev" id="lightboxPrev">&#8249;</button>
+    <button class="lightbox-nav lightbox-next" id="lightboxNext">&#8250;</button>
+    <img class="lightbox-img" id="lightboxImg" src="" alt="">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('gallery')) throw new Error('Not authenticated');
+
+    const galleryData = [
+      { src: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&h=450&fit=crop', title: 'Standard Room', category: 'rooms' },
+      { src: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop', title: 'Fine Dining Restaurant', category: 'dining' },
+      { src: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=700&fit=crop', title: 'Hotel Exterior', category: 'facilities' },
+      { src: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&h=500&fit=crop', title: 'Deluxe Room', category: 'rooms' },
+      { src: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop', title: 'Breakfast Buffet', category: 'dining' },
+      { src: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=600&h=450&fit=crop', title: 'Infinity Pool', category: 'facilities' },
+      { src: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&h=600&fit=crop', title: 'Premium Suite', category: 'rooms' },
+      { src: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop', title: 'Lounge Bar', category: 'dining' },
+      { src: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&h=500&fit=crop', title: 'Spa & Wellness', category: 'facilities' },
+      { src: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600&h=450&fit=crop', title: 'Family Room', category: 'rooms' },
+      { src: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&h=400&fit=crop', title: 'Private Dining', category: 'dining' },
+      { src: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=500&fit=crop', title: 'Fitness Center', category: 'facilities' },
+      { src: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=600&h=500&fit=crop', title: 'Executive Room', category: 'rooms' },
+      { src: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=600&h=700&fit=crop', title: 'Hotel Lobby', category: 'facilities' },
+      { src: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&h=450&fit=crop', title: 'Penthouse Suite', category: 'rooms' },
+    ];
+
+    let currentFilter = 'all';
+    let filteredImages = [...galleryData];
+    let lightboxIndex = 0;
+
+    function renderGallery(filter) {
+      currentFilter = filter;
+      filteredImages = filter === 'all' ? [...galleryData] : galleryData.filter(img => img.category === filter);
+
+      const grid = document.getElementById('galleryGrid');
+      grid.innerHTML = filteredImages.map((img, i) => `
+        <div class="gallery-item" onclick="openLightbox(${i})">
+          <img src="${img.src}" alt="${img.title}" loading="lazy">
+          <div class="gallery-overlay">
+            <h4>${img.title}</h4>
+            <span>${img.category.charAt(0).toUpperCase() + img.category.slice(1)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Filter buttons
+    document.getElementById('galleryFilters').addEventListener('click', (e) => {
+      if (e.target.classList.contains('filter-btn')) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        renderGallery(e.target.dataset.filter);
+      }
+    });
+
+    // Lightbox
+    function openLightbox(index) {
+      lightboxIndex = index;
+      updateLightbox();
+      document.getElementById('lightbox').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function updateLightbox() {
+      const img = filteredImages[lightboxIndex];
+      document.getElementById('lightboxImg').src = img.src.replace('w=600', 'w=1200').replace('h=400', 'h=800').replace('h=450', 'h=900').replace('h=500', 'h=1000').replace('h=600', 'h=1200').replace('h=700', 'h=1400');
+      document.getElementById('lightboxCaption').textContent = img.title;
+    }
+
+    document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+
+    document.getElementById('lightboxPrev').addEventListener('click', () => {
+      lightboxIndex = (lightboxIndex - 1 + filteredImages.length) % filteredImages.length;
+      updateLightbox();
+    });
+
+    document.getElementById('lightboxNext').addEventListener('click', () => {
+      lightboxIndex = (lightboxIndex + 1) % filteredImages.length;
+      updateLightbox();
+    });
+
+    // Close on backdrop click
+    document.getElementById('lightbox').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeLightbox();
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('lightbox').classList.contains('open')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') {
+        lightboxIndex = (lightboxIndex - 1 + filteredImages.length) % filteredImages.length;
+        updateLightbox();
+      }
+      if (e.key === 'ArrowRight') {
+        lightboxIndex = (lightboxIndex + 1) % filteredImages.length;
+        updateLightbox();
+      }
+    });
+
+    renderGallery('all');
+  </script>
+</body>
+</html>
