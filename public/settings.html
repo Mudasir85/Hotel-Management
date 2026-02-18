@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    .container {
+      flex: 1;
+      padding: 24px;
+      max-width: 720px;
+    }
+
+    .page-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .card-subtitle {
+      font-size: 0.88rem;
+      color: #888;
+      margin-bottom: 24px;
+    }
+
+    .form-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #555;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 42px 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #888;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+    }
+
+    .toggle-password:hover {
+      color: #555;
+    }
+
+    .password-strength {
+      height: 4px;
+      border-radius: 2px;
+      background: #eee;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .password-strength-bar {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s, background 0.3s;
+      width: 0;
+    }
+
+    .strength-text {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .password-rules {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .btn-save {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 32px;
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn-save:hover {
+      background: #1557b0;
+    }
+
+    .btn-save:disabled {
+      background: #94b8e8;
+      cursor: not-allowed;
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .divider {
+      height: 1px;
+      background: #eee;
+      margin: 24px 0;
+    }
+
+    @media (max-width: 600px) {
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+
+  <div class="main-content">
+    <div class="container">
+      <h1 class="page-title">Settings</h1>
+
+      <div id="settingsMessage" class="message"></div>
+
+      <div class="card">
+        <div class="card-title">Change Password</div>
+        <div class="card-subtitle">Update your password to keep your account secure</div>
+
+        <form id="passwordForm">
+          <div class="form-stack">
+            <div class="form-group">
+              <label for="currentPassword">Current Password</label>
+              <div class="input-wrapper">
+                <input type="password" id="currentPassword" required placeholder="Enter current password">
+                <button type="button" class="toggle-password" onclick="togglePass('currentPassword', this)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <div class="input-wrapper">
+                <input type="password" id="newPassword" required minlength="8" placeholder="Minimum 8 characters">
+                <button type="button" class="toggle-password" onclick="togglePass('newPassword', this)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
+                </button>
+              </div>
+              <div class="password-strength">
+                <div class="password-strength-bar" id="strengthBar"></div>
+              </div>
+              <div class="strength-text" id="strengthText"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="confirmPassword">Confirm New Password</label>
+              <div class="input-wrapper">
+                <input type="password" id="confirmPassword" required minlength="8" placeholder="Re-enter new password">
+                <button type="button" class="toggle-password" onclick="togglePass('confirmPassword', this)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
+                </button>
+              </div>
+              <div class="password-rules" id="matchText"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-save" id="savePasswordBtn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('settings')) throw new Error('Not authenticated');
+
+    const messageEl = document.getElementById('settingsMessage');
+
+    function showMsg(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = `message ${type}`;
+      messageEl.style.display = 'block';
+      setTimeout(() => { messageEl.style.display = 'none'; }, 4000);
+    }
+
+    function togglePass(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      } else {
+        input.type = 'password';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>`;
+      }
+    }
+
+    // Password strength indicator
+    document.getElementById('newPassword').addEventListener('input', (e) => {
+      const val = e.target.value;
+      const bar = document.getElementById('strengthBar');
+      const text = document.getElementById('strengthText');
+
+      let strength = 0;
+      if (val.length >= 8) strength++;
+      if (val.length >= 12) strength++;
+      if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength++;
+      if (/\d/.test(val)) strength++;
+      if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+      const levels = [
+        { width: '0%', color: '#eee', label: '' },
+        { width: '20%', color: '#dc3545', label: 'Weak' },
+        { width: '40%', color: '#fd7e14', label: 'Fair' },
+        { width: '60%', color: '#ffc107', label: 'Good' },
+        { width: '80%', color: '#28a745', label: 'Strong' },
+        { width: '100%', color: '#198754', label: 'Very Strong' }
+      ];
+
+      const level = val.length === 0 ? levels[0] : levels[Math.min(strength, 5)];
+      bar.style.width = level.width;
+      bar.style.background = level.color;
+      text.textContent = level.label;
+      text.style.color = level.color;
+    });
+
+    // Confirm password match check
+    document.getElementById('confirmPassword').addEventListener('input', (e) => {
+      const newPass = document.getElementById('newPassword').value;
+      const confirm = e.target.value;
+      const matchText = document.getElementById('matchText');
+
+      if (!confirm) {
+        matchText.textContent = '';
+        return;
+      }
+
+      if (newPass === confirm) {
+        matchText.textContent = 'Passwords match';
+        matchText.style.color = '#28a745';
+      } else {
+        matchText.textContent = 'Passwords do not match';
+        matchText.style.color = '#dc3545';
+      }
+    });
+
+    // Submit password change
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        showMsg('All fields are required.', 'error');
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        showMsg('New password must be at least 8 characters.', 'error');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showMsg('New passwords do not match.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('savePasswordBtn');
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      try {
+        const res = await fetch(BASE + '/api/settings/password', {
+          method: 'POST',
+          headers: Auth.headers(),
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword,
+            confirm_password: confirmPassword
+          })
+        });
+
+        const result = await res.json();
+
+        if (res.status === 401 || res.status === 403) {
+          if (result.error === 'Current password is incorrect') {
+            showMsg(result.error, 'error');
+          } else {
+            Auth.logout();
+          }
+          return;
+        }
+
+        if (!res.ok) {
+          showMsg(result.error, 'error');
+          return;
+        }
+
+        showMsg('Password changed successfully!', 'success');
+        document.getElementById('passwordForm').reset();
+        document.getElementById('strengthBar').style.width = '0%';
+        document.getElementById('strengthText').textContent = '';
+        document.getElementById('matchText').textContent = '';
+      } catch {
+        showMsg('Failed to change password.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Update Password`;
+      }
+    });
+  </script>
+</body>
+</html>

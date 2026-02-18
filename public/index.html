@@ -67,6 +67,12 @@
       box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
     }
 
+    .members-hint {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 3px;
+    }
+
     .btn {
       padding: 10px 24px;
       border: none;
@@ -316,7 +322,9 @@
               </select>
             </div>
             <div class="form-group">
-              <label>&nbsp;</label>
+              <label for="members">Members</label>
+              <input type="number" id="members" required min="1" max="2" value="1" placeholder="Number of guests">
+              <span class="members-hint" id="membersHint">Max capacity: 2</span>
             </div>
             <div class="form-group">
               <label for="checkIn">Check-In</label>
@@ -368,7 +376,9 @@
             </select>
           </div>
           <div class="form-group">
-            <label>&nbsp;</label>
+            <label for="editMembers">Members</label>
+            <input type="number" id="editMembers" required min="1" max="2" value="1" placeholder="Number of guests">
+            <span class="members-hint" id="editMembersHint">Max capacity: 2</span>
           </div>
           <div class="form-group">
             <label for="editCheckIn">Check-In</label>
@@ -396,6 +406,43 @@
     const form = document.getElementById('bookingForm');
     const container = document.getElementById('bookingsContainer');
 
+    // Room capacity map
+    const ROOM_CAPACITY = {
+      '101': 2,
+      '102': 3,
+      '103': 4,
+      '201': 5,
+      '202': 3,
+      '203': 4
+    };
+
+    // Update members max/hint when room changes
+    function updateMembersLimit(roomSelect, membersInput, hintEl) {
+      const room = roomSelect.value;
+      const max = ROOM_CAPACITY[room] || 2;
+      membersInput.max = max;
+      hintEl.textContent = room ? `Max capacity: ${max}` : 'Select a room first';
+      if (parseInt(membersInput.value) > max) {
+        membersInput.value = max;
+      }
+    }
+
+    document.getElementById('roomNumber').addEventListener('change', () => {
+      updateMembersLimit(
+        document.getElementById('roomNumber'),
+        document.getElementById('members'),
+        document.getElementById('membersHint')
+      );
+    });
+
+    document.getElementById('editRoomNumber').addEventListener('change', () => {
+      updateMembersLimit(
+        document.getElementById('editRoomNumber'),
+        document.getElementById('editMembers'),
+        document.getElementById('editMembersHint')
+      );
+    });
+
     // Handle pre-selected room from "Book Now" on Rooms page
     (function handleRoomPreselect() {
       const params = new URLSearchParams(window.location.search);
@@ -412,6 +459,13 @@
             break;
           }
         }
+
+        // Update members limit for pre-selected room
+        updateMembersLimit(
+          document.getElementById('roomNumber'),
+          document.getElementById('members'),
+          document.getElementById('membersHint')
+        );
 
         // Show info banner
         if (roomType || price) {
@@ -473,6 +527,7 @@
             <td>${b.guest_name}</td>
             <td>${b.guest_phone}</td>
             <td>${b.room_number}</td>
+            <td>${b.members || 1}</td>
             <td>${b.check_in_date}</td>
             <td>${b.check_out_date}</td>
             <td>
@@ -493,6 +548,7 @@
                 <th>Guest</th>
                 <th>Phone</th>
                 <th>Room</th>
+                <th>Members</th>
                 <th>Check-In</th>
                 <th>Check-Out</th>
                 <th>Actions</th>
@@ -513,6 +569,7 @@
         guest_name: document.getElementById('guestName').value.trim(),
         guest_phone: document.getElementById('guestPhone').value.trim(),
         room_number: document.getElementById('roomNumber').value,
+        members: parseInt(document.getElementById('members').value) || 1,
         check_in_date: document.getElementById('checkIn').value,
         check_out_date: document.getElementById('checkOut').value
       };
@@ -538,6 +595,8 @@
 
         showMessage(`Booking #${result.id} created for Room ${result.room_number}`, 'success');
         form.reset();
+        document.getElementById('members').value = 1;
+        document.getElementById('membersHint').textContent = 'Max capacity: 2';
         loadBookings();
       } catch {
         showMessage('Failed to create booking. Please try again.', 'error');
@@ -587,8 +646,17 @@
         document.getElementById('editGuestName').value = b.guest_name;
         document.getElementById('editGuestPhone').value = b.guest_phone;
         document.getElementById('editRoomNumber').value = b.room_number;
+        document.getElementById('editMembers').value = b.members || 1;
         document.getElementById('editCheckIn').value = b.check_in_date;
         document.getElementById('editCheckOut').value = b.check_out_date;
+
+        // Update members limit for the selected room
+        updateMembersLimit(
+          document.getElementById('editRoomNumber'),
+          document.getElementById('editMembers'),
+          document.getElementById('editMembersHint')
+        );
+
         document.getElementById('editModal').classList.add('open');
       } catch {
         showMessage('Failed to load booking details.', 'error');
@@ -613,6 +681,7 @@
         guest_name: document.getElementById('editGuestName').value.trim(),
         guest_phone: document.getElementById('editGuestPhone').value.trim(),
         room_number: document.getElementById('editRoomNumber').value,
+        members: parseInt(document.getElementById('editMembers').value) || 1,
         check_in_date: document.getElementById('editCheckIn').value,
         check_out_date: document.getElementById('editCheckOut').value
       };

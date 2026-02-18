@@ -263,11 +263,11 @@ function renderHeader() {
             </div>
           </div>
           <div class="user-dropdown-divider"></div>
-          <a href="#" class="user-dropdown-item" onclick="event.preventDefault();">
+          <a href="${BASE}/dashboard/profile" class="user-dropdown-item">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
             Profile
           </a>
-          <a href="#" class="user-dropdown-item" onclick="event.preventDefault();">
+          <a href="${BASE}/dashboard/settings" class="user-dropdown-item">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
             Settings
           </a>

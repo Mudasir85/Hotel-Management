@@ -34,15 +34,26 @@ db.serialize(() => {
     )
   `);
 
+  // Add members column if it doesn't exist
+  db.run(`ALTER TABLE bookings ADD COLUMN members INTEGER DEFAULT 1`, (err) => {
+    // Ignore error if column already exists
+  });
+
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       full_name TEXT NOT NULL,
+      email TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add email and phone columns if they don't exist
+  db.run(`ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''`, (err) => {});
+  db.run(`ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''`, (err) => {});
 
   // Seed a default admin user (password: admin123)
   const defaultPassword = bcrypt.hashSync('admin123', 10);
@@ -51,6 +62,18 @@ db.serialize(() => {
     ['admin', defaultPassword, 'Administrator']
   );
 });
+
+// Room capacity map
+const ROOM_CAPACITY = {
+  '101': 2,  // Standard
+  '102': 3,  // Deluxe
+  '103': 4,  // Suite
+  '201': 5,  // Family
+  '202': 3,  // Executive
+  '203': 4   // Penthouse
+};
+
+const TOTAL_ROOMS = 6;
 
 // ─── Auth Middleware ───────────────────────────────────────────────
 function authenticateToken(req, res, next) {
@@ -97,7 +120,7 @@ app.post('/api/auth/login', (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, username: user.username, full_name: user.full_name }
+      user: { id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '' }
     });
   });
 });
@@ -143,7 +166,105 @@ app.post('/api/auth/register', (req, res) => {
 
 // GET /api/auth/me - Verify token & get user info
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  res.json({ user: req.user });
+  db.get('SELECT id, username, full_name, email, phone FROM users WHERE id = ?', [req.user.id], (err, user) => {
+    if (err || !user) {
+      return res.json({ user: req.user });
+    }
+    res.json({ user: { id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '' } });
+  });
+});
+
+// ─── Profile Routes ─────────────────────────────────────────────
+
+// GET /api/profile - Get user profile
+app.get('/api/profile', authenticateToken, (req, res) => {
+  db.get('SELECT id, username, full_name, email, phone, created_at FROM users WHERE id = ?', [req.user.id], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch profile' });
+    }
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '', created_at: user.created_at });
+  });
+});
+
+// POST /api/profile - Update user profile
+app.post('/api/profile', authenticateToken, (req, res) => {
+  const { full_name, email, phone } = req.body;
+
+  if (!full_name || !full_name.trim()) {
+    return res.status(400).json({ error: 'Full name is required' });
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  if (phone && !/^\d{10}$/.test(phone)) {
+    return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
+  }
+
+  db.run(
+    'UPDATE users SET full_name = ?, email = ?, phone = ? WHERE id = ?',
+    [full_name.trim(), email || '', phone || '', req.user.id],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update profile' });
+      }
+
+      // Re-issue token with updated name
+      const token = jwt.sign(
+        { id: req.user.id, username: req.user.username, full_name: full_name.trim() },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      res.json({
+        message: 'Profile updated successfully',
+        token,
+        user: { id: req.user.id, username: req.user.username, full_name: full_name.trim(), email: email || '', phone: phone || '' }
+      });
+    }
+  );
+});
+
+// ─── Settings Routes ────────────────────────────────────────────
+
+// POST /api/settings/password - Change password
+app.post('/api/settings/password', authenticateToken, (req, res) => {
+  const { current_password, new_password, confirm_password } = req.body;
+
+  if (!current_password || !new_password || !confirm_password) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  if (new_password.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters' });
+  }
+
+  if (new_password !== confirm_password) {
+    return res.status(400).json({ error: 'New passwords do not match' });
+  }
+
+  db.get('SELECT * FROM users WHERE id = ?', [req.user.id], (err, user) => {
+    if (err || !user) {
+      return res.status(500).json({ error: 'Failed to verify user' });
+    }
+
+    if (!bcrypt.compareSync(current_password, user.password)) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = bcrypt.hashSync(new_password, 10);
+
+    db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.user.id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to change password' });
+      }
+      res.json({ message: 'Password changed successfully' });
+    });
+  });
 });
 
 // ─── Dashboard Stats ─────────────────────────────────────────────
@@ -159,11 +280,12 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
 
     const totalBookings = bookings.length;
     const activeBookings = bookings.filter(b => b.check_out_date >= today).length;
-    const roomsOccupied = new Set(
+    const occupiedRoomSet = new Set(
       bookings.filter(b => b.check_in_date <= today && b.check_out_date >= today)
         .map(b => b.room_number)
-    ).size;
-    const totalRooms = 3;
+    );
+    const roomsOccupied = occupiedRoomSet.size;
+    const totalRooms = TOTAL_ROOMS;
 
     res.json({
       totalBookings,
@@ -173,6 +295,13 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
       totalRooms
     });
   });
+});
+
+// ─── Room Capacity Route ────────────────────────────────────────
+
+// GET /api/rooms/capacity - Get room capacities
+app.get('/api/rooms/capacity', authenticateToken, (req, res) => {
+  res.json(ROOM_CAPACITY);
 });
 
 // ─── Booking Routes (Protected) ──────────────────────────────────
@@ -189,7 +318,7 @@ app.get('/api/bookings', authenticateToken, (req, res) => {
 
 // POST /api/bookings - Create a booking
 app.post('/api/bookings', authenticateToken, (req, res) => {
-  const { guest_name, guest_phone, room_number, check_in_date, check_out_date } = req.body;
+  const { guest_name, guest_phone, room_number, check_in_date, check_out_date, members } = req.body;
 
   // Basic validation
   if (!guest_name || !guest_phone || !room_number || !check_in_date || !check_out_date) {
@@ -202,6 +331,13 @@ app.post('/api/bookings', authenticateToken, (req, res) => {
 
   if (check_out_date <= check_in_date) {
     return res.status(400).json({ error: 'Check-out date must be after check-in date' });
+  }
+
+  const memberCount = parseInt(members) || 1;
+  const maxCapacity = ROOM_CAPACITY[room_number] || 2;
+
+  if (memberCount < 1 || memberCount > maxCapacity) {
+    return res.status(400).json({ error: `Members must be between 1 and ${maxCapacity} for Room ${room_number}` });
   }
 
   // Double-booking check: find overlapping bookings for the same room
@@ -223,11 +359,11 @@ app.post('/api/bookings', authenticateToken, (req, res) => {
 
     // Insert the booking
     const insertQuery = `
-      INSERT INTO bookings (guest_name, guest_phone, room_number, check_in_date, check_out_date)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO bookings (guest_name, guest_phone, room_number, check_in_date, check_out_date, members)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
 
-    db.run(insertQuery, [guest_name, guest_phone, room_number, check_in_date, check_out_date], function (err) {
+    db.run(insertQuery, [guest_name, guest_phone, room_number, check_in_date, check_out_date, memberCount], function (err) {
       if (err) {
         return res.status(500).json({ error: 'Failed to create booking' });
       }
@@ -237,7 +373,8 @@ app.post('/api/bookings', authenticateToken, (req, res) => {
         guest_phone,
         room_number,
         check_in_date,
-        check_out_date
+        check_out_date,
+        members: memberCount
       });
     });
   });
@@ -261,7 +398,7 @@ app.get('/api/bookings/:id', authenticateToken, (req, res) => {
 // PUT /api/bookings/:id - Update a booking
 app.put('/api/bookings/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const { guest_name, guest_phone, room_number, check_in_date, check_out_date } = req.body;
+  const { guest_name, guest_phone, room_number, check_in_date, check_out_date, members } = req.body;
 
   if (!guest_name || !guest_phone || !room_number || !check_in_date || !check_out_date) {
     return res.status(400).json({ error: 'All fields are required' });
@@ -273,6 +410,13 @@ app.put('/api/bookings/:id', authenticateToken, (req, res) => {
 
   if (check_out_date <= check_in_date) {
     return res.status(400).json({ error: 'Check-out date must be after check-in date' });
+  }
+
+  const memberCount = parseInt(members) || 1;
+  const maxCapacity = ROOM_CAPACITY[room_number] || 2;
+
+  if (memberCount < 1 || memberCount > maxCapacity) {
+    return res.status(400).json({ error: `Members must be between 1 and ${maxCapacity} for Room ${room_number}` });
   }
 
   // Double-booking check (exclude current booking)
@@ -295,18 +439,18 @@ app.put('/api/bookings/:id', authenticateToken, (req, res) => {
 
     const updateQuery = `
       UPDATE bookings
-      SET guest_name = ?, guest_phone = ?, room_number = ?, check_in_date = ?, check_out_date = ?
+      SET guest_name = ?, guest_phone = ?, room_number = ?, check_in_date = ?, check_out_date = ?, members = ?
       WHERE id = ?
     `;
 
-    db.run(updateQuery, [guest_name, guest_phone, room_number, check_in_date, check_out_date, id], function (err) {
+    db.run(updateQuery, [guest_name, guest_phone, room_number, check_in_date, check_out_date, memberCount, id], function (err) {
       if (err) {
         return res.status(500).json({ error: 'Failed to update booking' });
       }
       if (this.changes === 0) {
         return res.status(404).json({ error: 'Booking not found' });
       }
-      res.json({ id: Number(id), guest_name, guest_phone, room_number, check_in_date, check_out_date });
+      res.json({ id: Number(id), guest_name, guest_phone, room_number, check_in_date, check_out_date, members: memberCount });
     });
   });
 });
@@ -360,6 +504,14 @@ app.get('/dashboard/blogs', (req, res) => {
 
 app.get('/dashboard/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
+});
+
+app.get('/dashboard/profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'profile.html'));
+});
+
+app.get('/dashboard/settings', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'settings.html'));
 });
 
 app.get('/bookings/:id', (req, res) => {
