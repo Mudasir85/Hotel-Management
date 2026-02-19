@@ -655,6 +655,158 @@ function showToast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
+// ─── Lightweight SPA Navigation (dashboard only) ───────────────
+function isDashboardRoute(pathname) {
+  return pathname === `${BASE}/dashboard` || pathname.startsWith(`${BASE}/dashboard/`);
+}
+
+function getActivePageFromPath(pathname) {
+  if (pathname === `${BASE}/dashboard`) return 'dashboard';
+  const parts = pathname.replace(`${BASE}/dashboard/`, '').split('/').filter(Boolean);
+  return parts[0] || 'dashboard';
+}
+
+function ensureMainContentSlot() {
+  const main = document.querySelector('.main-content');
+  if (!main) return null;
+
+  let slot = main.querySelector('[data-router-slot]');
+  if (slot) return slot;
+
+  slot = document.createElement('div');
+  slot.setAttribute('data-router-slot', 'true');
+
+  const movableChildren = Array.from(main.children).filter(
+    (child) => !child.classList.contains('top-header')
+  );
+
+  movableChildren.forEach((child) => slot.appendChild(child));
+  main.appendChild(slot);
+  return slot;
+}
+
+function sanitizeInlineScript(scriptText) {
+  return scriptText.replace(
+    /if\s*\(!initAppPage\([^)]*\)\)\s*throw\s+new\s+Error\((['"])Not authenticated\1\);?/g,
+    "if (!Auth.requireAuth()) throw new Error('Not authenticated');"
+  );
+}
+
+function executeRouteScriptsFromDocument(doc) {
+  const scripts = doc.querySelectorAll('script');
+  scripts.forEach((script) => {
+    if (script.src) return;
+    const raw = script.textContent || '';
+    if (!raw.trim()) return;
+
+    const safeScript = sanitizeInlineScript(raw);
+    try {
+      new Function(safeScript)();
+    } catch (err) {
+      console.error('SPA route script error:', err);
+    }
+  });
+}
+
+function swapRouteMainContent(doc) {
+  const currentMain = document.querySelector('.main-content');
+  const nextMain = doc.querySelector('.main-content');
+  if (!currentMain || !nextMain) return false;
+
+  const slot = ensureMainContentSlot();
+  if (!slot) return false;
+
+  const nextChildren = Array.from(nextMain.children).filter(
+    (child) => !child.classList.contains('top-header')
+  );
+
+  slot.innerHTML = '';
+  nextChildren.forEach((child) => {
+    slot.appendChild(child.cloneNode(true));
+  });
+
+  return true;
+}
+
+async function navigateDashboardRoute(pathAndQuery, options = {}) {
+  const { replace = false, fromPopState = false } = options;
+  const absoluteUrl = new URL(pathAndQuery, window.location.origin);
+
+  if (!isDashboardRoute(absoluteUrl.pathname)) {
+    window.location.href = absoluteUrl.pathname + absoluteUrl.search;
+    return;
+  }
+
+  try {
+    const response = await fetch(absoluteUrl.pathname + absoluteUrl.search, {
+      headers: { 'X-Requested-With': 'spa' }
+    });
+
+    if (!response.ok) {
+      window.location.href = absoluteUrl.pathname + absoluteUrl.search;
+      return;
+    }
+
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    if (!swapRouteMainContent(doc)) {
+      window.location.href = absoluteUrl.pathname + absoluteUrl.search;
+      return;
+    }
+
+    if (!fromPopState) {
+      const method = replace ? 'replaceState' : 'pushState';
+      window.history[method]({ spa: true }, '', absoluteUrl.pathname + absoluteUrl.search);
+    }
+
+    document.title = doc.title || document.title;
+    renderSidebar(getActivePageFromPath(absoluteUrl.pathname));
+    executeRouteScriptsFromDocument(doc);
+    window.scrollTo(0, 0);
+  } catch {
+    window.location.href = absoluteUrl.pathname + absoluteUrl.search;
+  }
+}
+
+function initSpaNavigation() {
+  if (window.__dashboardSpaNavInitialized) return;
+  window.__dashboardSpaNavInitialized = true;
+
+  ensureMainContentSlot();
+
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented) return;
+    if (event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+    if (link.target && link.target !== '_self') return;
+    if (link.hasAttribute('download') || link.getAttribute('rel') === 'external') return;
+
+    const href = link.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+    const url = new URL(link.href, window.location.origin);
+    if (url.origin !== window.location.origin) return;
+    if (!isDashboardRoute(url.pathname)) return;
+
+    if (url.pathname === window.location.pathname && url.search === window.location.search) {
+      event.preventDefault();
+      return;
+    }
+
+    event.preventDefault();
+    navigateDashboardRoute(url.pathname + url.search);
+  });
+
+  window.addEventListener('popstate', () => {
+    if (!isDashboardRoute(window.location.pathname)) return;
+    navigateDashboardRoute(window.location.pathname + window.location.search, { fromPopState: true });
+  });
+}
+
 // ─── Init App Page ───────────────────────────────────────────────
 function initAppPage(activePage) {
   if (!Auth.requireAuth()) return false;
@@ -664,5 +816,6 @@ function initAppPage(activePage) {
   renderSidebar(activePage);
   renderHeader();
   ensureToastContainer();
+  initSpaNavigation();
   return true;
 }
