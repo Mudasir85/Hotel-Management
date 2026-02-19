@@ -323,7 +323,13 @@
             </div>
             <div class="form-group">
               <label for="members">Members</label>
-              <input type="number" id="members" required min="1" max="2" value="1" placeholder="Number of guests">
+              <select id="members" required>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
               <span class="members-hint" id="membersHint">Max capacity: 2</span>
             </div>
             <div class="form-group">
@@ -377,7 +383,13 @@
           </div>
           <div class="form-group">
             <label for="editMembers">Members</label>
-            <input type="number" id="editMembers" required min="1" max="2" value="1" placeholder="Number of guests">
+            <select id="editMembers" required>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
             <span class="members-hint" id="editMembersHint">Max capacity: 2</span>
           </div>
           <div class="form-group">
@@ -416,14 +428,24 @@
       '203': 4
     };
 
-    // Update members max/hint when room changes
-    function updateMembersLimit(roomSelect, membersInput, hintEl) {
+    // Update members dropdown options when room changes
+    function updateMembersLimit(roomSelect, membersSelect, hintEl, autoSelect) {
       const room = roomSelect.value;
       const max = ROOM_CAPACITY[room] || 2;
-      membersInput.max = max;
       hintEl.textContent = room ? `Max capacity: ${max}` : 'Select a room first';
-      if (parseInt(membersInput.value) > max) {
-        membersInput.value = max;
+
+      // Enable/disable options based on capacity
+      for (const opt of membersSelect.options) {
+        const val = parseInt(opt.value);
+        opt.disabled = val > max;
+      }
+
+      const currentVal = parseInt(membersSelect.value);
+      // Auto-select room capacity when room changes (not during edit pre-population)
+      if (autoSelect !== false) {
+        membersSelect.value = max;
+      } else if (currentVal > max) {
+        membersSelect.value = max;
       }
     }
 
@@ -431,7 +453,8 @@
       updateMembersLimit(
         document.getElementById('roomNumber'),
         document.getElementById('members'),
-        document.getElementById('membersHint')
+        document.getElementById('membersHint'),
+        true
       );
     });
 
@@ -439,7 +462,8 @@
       updateMembersLimit(
         document.getElementById('editRoomNumber'),
         document.getElementById('editMembers'),
-        document.getElementById('editMembersHint')
+        document.getElementById('editMembersHint'),
+        true
       );
     });
 
@@ -460,11 +484,12 @@
           }
         }
 
-        // Update members limit for pre-selected room
+        // Update members limit for pre-selected room (auto-select capacity)
         updateMembersLimit(
           document.getElementById('roomNumber'),
           document.getElementById('members'),
-          document.getElementById('membersHint')
+          document.getElementById('membersHint'),
+          true
         );
 
         // Show info banner
@@ -499,10 +524,7 @@
     });
 
     function showMessage(text, type) {
-      messageEl.textContent = text;
-      messageEl.className = `message ${type}`;
-      messageEl.style.display = 'block';
-      setTimeout(() => { messageEl.style.display = 'none'; }, 4000);
+      showToast(text, type);
     }
 
     async function loadBookings() {
@@ -565,11 +587,20 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      const roomNumber = document.getElementById('roomNumber').value;
+      const memberCount = parseInt(document.getElementById('members').value) || 1;
+      const maxCapacity = ROOM_CAPACITY[roomNumber] || 2;
+
+      if (memberCount > maxCapacity) {
+        showToast(`Members cannot exceed ${maxCapacity} for Room ${roomNumber}`, 'error');
+        return;
+      }
+
       const data = {
         guest_name: document.getElementById('guestName').value.trim(),
         guest_phone: document.getElementById('guestPhone').value.trim(),
-        room_number: document.getElementById('roomNumber').value,
-        members: parseInt(document.getElementById('members').value) || 1,
+        room_number: roomNumber,
+        members: memberCount,
         check_in_date: document.getElementById('checkIn').value,
         check_out_date: document.getElementById('checkOut').value
       };
@@ -589,17 +620,17 @@
         }
 
         if (!res.ok) {
-          showMessage(result.error, 'error');
+          showToast(result.error, 'error');
           return;
         }
 
-        showMessage(`Booking #${result.id} created for Room ${result.room_number}`, 'success');
+        showToast(`Booking #${result.id} created for Room ${result.room_number}`, 'success');
         form.reset();
-        document.getElementById('members').value = 1;
+        document.getElementById('members').value = '1';
         document.getElementById('membersHint').textContent = 'Max capacity: 2';
         loadBookings();
       } catch {
-        showMessage('Failed to create booking. Please try again.', 'error');
+        showToast('Failed to create booking. Please try again.', 'error');
       }
     });
 
@@ -619,14 +650,14 @@
 
         if (!res.ok) {
           const result = await res.json();
-          showMessage(result.error, 'error');
+          showToast(result.error, 'error');
           return;
         }
 
-        showMessage('Booking deleted successfully', 'success');
+        showToast('Booking deleted successfully', 'success');
         loadBookings();
       } catch {
-        showMessage('Failed to delete booking.', 'error');
+        showToast('Failed to delete booking.', 'error');
       }
     }
 
@@ -637,7 +668,7 @@
       try {
         const res = await fetch(`${API}/${id}`, { headers: Auth.headers() });
         if (!res.ok) {
-          showMessage('Failed to load booking details.', 'error');
+          showToast('Failed to load booking details.', 'error');
           return;
         }
         const b = await res.json();
@@ -646,20 +677,23 @@
         document.getElementById('editGuestName').value = b.guest_name;
         document.getElementById('editGuestPhone').value = b.guest_phone;
         document.getElementById('editRoomNumber').value = b.room_number;
-        document.getElementById('editMembers').value = b.members || 1;
         document.getElementById('editCheckIn').value = b.check_in_date;
         document.getElementById('editCheckOut').value = b.check_out_date;
 
-        // Update members limit for the selected room
+        // Update members options for the selected room (don't auto-select)
         updateMembersLimit(
           document.getElementById('editRoomNumber'),
           document.getElementById('editMembers'),
-          document.getElementById('editMembersHint')
+          document.getElementById('editMembersHint'),
+          false
         );
+
+        // Pre-populate with existing member count
+        document.getElementById('editMembers').value = b.members || 1;
 
         document.getElementById('editModal').classList.add('open');
       } catch {
-        showMessage('Failed to load booking details.', 'error');
+        showToast('Failed to load booking details.', 'error');
       }
     }
 
@@ -677,11 +711,20 @@
       e.preventDefault();
       if (!editingId) return;
 
+      const editRoom = document.getElementById('editRoomNumber').value;
+      const editMemberCount = parseInt(document.getElementById('editMembers').value) || 1;
+      const editMaxCapacity = ROOM_CAPACITY[editRoom] || 2;
+
+      if (editMemberCount > editMaxCapacity) {
+        showToast(`Members cannot exceed ${editMaxCapacity} for Room ${editRoom}`, 'error');
+        return;
+      }
+
       const data = {
         guest_name: document.getElementById('editGuestName').value.trim(),
         guest_phone: document.getElementById('editGuestPhone').value.trim(),
-        room_number: document.getElementById('editRoomNumber').value,
-        members: parseInt(document.getElementById('editMembers').value) || 1,
+        room_number: editRoom,
+        members: editMemberCount,
         check_in_date: document.getElementById('editCheckIn').value,
         check_out_date: document.getElementById('editCheckOut').value
       };
@@ -701,15 +744,15 @@
         }
 
         if (!res.ok) {
-          showMessage(result.error, 'error');
+          showToast(result.error, 'error');
           return;
         }
 
         closeEditModal();
-        showMessage(`Booking #${editingId} updated successfully`, 'success');
+        showToast(`Booking #${editingId} updated successfully`, 'success');
         loadBookings();
       } catch {
-        showMessage('Failed to update booking.', 'error');
+        showToast('Failed to update booking.', 'error');
       }
     });
 

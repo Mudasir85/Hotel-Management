@@ -268,10 +268,7 @@
     }
 
     function showMsg(text, type) {
-      messageEl.textContent = text;
-      messageEl.className = `message ${type}`;
-      messageEl.style.display = 'block';
-      setTimeout(() => { messageEl.style.display = 'none'; }, 4000);
+      showToast(text, type);
     }
 
     // Load profile data
