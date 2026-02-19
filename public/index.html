@@ -588,7 +588,8 @@
       e.preventDefault();
 
       const roomNumber = document.getElementById('roomNumber').value;
-      const memberCount = parseInt(document.getElementById('members').value) || 1;
+      const membersEl = document.getElementById('members');
+      const memberCount = parseInt(membersEl.value, 10) || 1;
       const maxCapacity = ROOM_CAPACITY[roomNumber] || 2;
 
       if (memberCount > maxCapacity) {
@@ -624,10 +625,10 @@
           return;
         }
 
-        showToast(`Booking #${result.id} created for Room ${result.room_number}`, 'success');
+        showToast('Booking created successfully', 'success');
         form.reset();
         document.getElementById('members').value = '1';
-        document.getElementById('membersHint').textContent = 'Max capacity: 2';
+        document.getElementById('membersHint').textContent = 'Select a room first';
         loadBookings();
       } catch {
         showToast('Failed to create booking. Please try again.', 'error');
@@ -681,15 +682,21 @@
         document.getElementById('editCheckOut').value = b.check_out_date;
 
         // Update members options for the selected room (don't auto-select)
+        const editMembersSel = document.getElementById('editMembers');
         updateMembersLimit(
           document.getElementById('editRoomNumber'),
-          document.getElementById('editMembers'),
+          editMembersSel,
           document.getElementById('editMembersHint'),
           false
         );
 
-        // Pre-populate with existing member count
-        document.getElementById('editMembers').value = b.members || 1;
+        // Pre-populate with existing member count (use String for select value matching)
+        const savedMembers = String(b.members || 1);
+        editMembersSel.value = savedMembers;
+        // Fallback: if value didn't stick (e.g. option disabled), force it
+        if (editMembersSel.value !== savedMembers) {
+          editMembersSel.value = '1';
+        }
 
         document.getElementById('editModal').classList.add('open');
       } catch {
@@ -712,7 +719,8 @@
       if (!editingId) return;
 
       const editRoom = document.getElementById('editRoomNumber').value;
-      const editMemberCount = parseInt(document.getElementById('editMembers').value) || 1;
+      const editMembersVal = document.getElementById('editMembers');
+      const editMemberCount = parseInt(editMembersVal.value, 10) || 1;
       const editMaxCapacity = ROOM_CAPACITY[editRoom] || 2;
 
       if (editMemberCount > editMaxCapacity) {
@@ -749,7 +757,7 @@
         }
 
         closeEditModal();
-        showToast(`Booking #${editingId} updated successfully`, 'success');
+        showToast('Booking updated successfully', 'success');
         loadBookings();
       } catch {
         showToast('Failed to update booking.', 'error');
