@@ -62,22 +62,22 @@ function renderSidebar(activePage) {
         <a href="${BASE}/dashboard" class="${activePage === 'dashboard' ? 'active' : ''}">
           <span class="nav-icon">&#9632;</span> Dashboard
         </a>
-        <a href="${BASE}/dashboard/rooms" class="${activePage === 'rooms' ? 'active' : ''}">
+        <a href="${BASE}/rooms" class="${activePage === 'rooms' ? 'active' : ''}">
           <span class="nav-icon">&#127968;</span> Our Rooms
         </a>
-        <a href="${BASE}/dashboard/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
+        <a href="${BASE}/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
           <span class="nav-icon">&#128203;</span> Bookings
         </a>
-        <a href="${BASE}/dashboard/about" class="${activePage === 'about' ? 'active' : ''}">
+        <a href="${BASE}/about" class="${activePage === 'about' ? 'active' : ''}">
           <span class="nav-icon">&#8505;</span> About Us
         </a>
-        <a href="${BASE}/dashboard/gallery" class="${activePage === 'gallery' ? 'active' : ''}">
+        <a href="${BASE}/gallery" class="${activePage === 'gallery' ? 'active' : ''}">
           <span class="nav-icon">&#128247;</span> Gallery
         </a>
-        <a href="${BASE}/dashboard/blogs" class="${activePage === 'blogs' ? 'active' : ''}">
+        <a href="${BASE}/blogs" class="${activePage === 'blogs' ? 'active' : ''}">
           <span class="nav-icon">&#128240;</span> Blogs
         </a>
-        <a href="${BASE}/dashboard/contact" class="${activePage === 'contact' ? 'active' : ''}">
+        <a href="${BASE}/contact" class="${activePage === 'contact' ? 'active' : ''}">
           <span class="nav-icon">&#9993;</span> Contact
         </a>
       </nav>
@@ -263,11 +263,11 @@ function renderHeader() {
             </div>
           </div>
           <div class="user-dropdown-divider"></div>
-          <a href="${BASE}/dashboard/profile" class="user-dropdown-item">
+          <a href="${BASE}/profile" class="user-dropdown-item">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
             Profile
           </a>
-          <a href="${BASE}/dashboard/settings" class="user-dropdown-item">
+          <a href="${BASE}/settings" class="user-dropdown-item">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
             Settings
           </a>
@@ -655,15 +655,19 @@ function showToast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
-// ─── Lightweight SPA Navigation (dashboard only) ───────────────
-function isDashboardRoute(pathname) {
-  return pathname === `${BASE}/dashboard` || pathname.startsWith(`${BASE}/dashboard/`);
+// ─── Lightweight SPA Navigation ─────────────────────────────────
+function isAppRoute(pathname) {
+  if (!pathname.startsWith(BASE + '/')) return false;
+  const afterBase = pathname.slice(BASE.length);
+  const firstSegment = afterBase.split('/').filter(Boolean)[0];
+  return firstSegment && firstSegment !== 'login' && firstSegment !== 'api';
 }
 
 function getActivePageFromPath(pathname) {
-  if (pathname === `${BASE}/dashboard`) return 'dashboard';
-  const parts = pathname.replace(`${BASE}/dashboard/`, '').split('/').filter(Boolean);
-  return parts[0] || 'dashboard';
+  const afterBase = pathname.slice(BASE.length);
+  const segments = afterBase.split('/').filter(Boolean);
+  if (segments.length === 0 || segments[0] === 'dashboard') return 'dashboard';
+  return segments[0];
 }
 
 function ensureMainContentSlot() {
@@ -728,11 +732,46 @@ function swapRouteMainContent(doc) {
   return true;
 }
 
-async function navigateDashboardRoute(pathAndQuery, options = {}) {
+function injectPageStyles(doc) {
+  // Remove previously injected page styles
+  const old = document.getElementById('page-route-styles');
+  if (old) old.remove();
+
+  // Collect <style> tags from <head> that don't have an ID (page-specific)
+  const headStyles = doc.querySelectorAll('head style:not([id])');
+  if (headStyles.length === 0) return;
+
+  const combined = document.createElement('style');
+  combined.id = 'page-route-styles';
+  combined.textContent = Array.from(headStyles).map(s => s.textContent).join('\n');
+  document.head.appendChild(combined);
+}
+
+function injectBodyElements(doc) {
+  // Remove previously injected body elements
+  document.querySelectorAll('[data-spa-injected]').forEach(el => el.remove());
+
+  // Find elements in the fetched doc that are direct children of body
+  // but not app-navbar, main-content, or script tags
+  const bodyChildren = Array.from(doc.body.children).filter(child => {
+    if (child.tagName === 'SCRIPT') return false;
+    if (child.id === 'app-navbar') return false;
+    if (child.classList.contains('main-content')) return false;
+    return true;
+  });
+
+  bodyChildren.forEach(child => {
+    const clone = child.cloneNode(true);
+    clone.setAttribute('data-spa-injected', 'true');
+    document.body.appendChild(clone);
+  });
+}
+
+async function navigateRoute(pathAndQuery, options = {}) {
   const { replace = false, fromPopState = false } = options;
   const absoluteUrl = new URL(pathAndQuery, window.location.origin);
 
-  if (!isDashboardRoute(absoluteUrl.pathname)) {
+  if (!isAppRoute(absoluteUrl.pathname)) {
     window.location.href = absoluteUrl.pathname + absoluteUrl.search;
     return;
   }
@@ -755,6 +794,12 @@ async function navigateDashboardRoute(pathAndQuery, options = {}) {
       return;
     }
 
+    // Inject page-specific styles from fetched document
+    injectPageStyles(doc);
+
+    // Inject body-level elements (e.g. modals) from fetched document
+    injectBodyElements(doc);
+
     if (!fromPopState) {
       const method = replace ? 'replaceState' : 'pushState';
       window.history[method]({ spa: true }, '', absoluteUrl.pathname + absoluteUrl.search);
@@ -770,8 +815,8 @@ async function navigateDashboardRoute(pathAndQuery, options = {}) {
 }
 
 function initSpaNavigation() {
-  if (window.__dashboardSpaNavInitialized) return;
-  window.__dashboardSpaNavInitialized = true;
+  if (window.__spaNavInitialized) return;
+  window.__spaNavInitialized = true;
 
   ensureMainContentSlot();
 
@@ -790,7 +835,7 @@ function initSpaNavigation() {
 
     const url = new URL(link.href, window.location.origin);
     if (url.origin !== window.location.origin) return;
-    if (!isDashboardRoute(url.pathname)) return;
+    if (!isAppRoute(url.pathname)) return;
 
     if (url.pathname === window.location.pathname && url.search === window.location.search) {
       event.preventDefault();
@@ -798,12 +843,12 @@ function initSpaNavigation() {
     }
 
     event.preventDefault();
-    navigateDashboardRoute(url.pathname + url.search);
+    navigateRoute(url.pathname + url.search);
   });
 
   window.addEventListener('popstate', () => {
-    if (!isDashboardRoute(window.location.pathname)) return;
-    navigateDashboardRoute(window.location.pathname + window.location.search, { fromPopState: true });
+    if (!isAppRoute(window.location.pathname)) return;
+    navigateRoute(window.location.pathname + window.location.search, { fromPopState: true });
   });
 }
 

@@ -764,6 +764,12 @@
       }
     });
 
+    // Expose functions globally for onclick handlers (needed for SPA navigation)
+    window.openEditModal = openEditModal;
+    window.closeEditModal = closeEditModal;
+    window.deleteBooking = deleteBooking;
+    window.dismissRoomBanner = dismissRoomBanner;
+
     // Initial load
     loadBookings();
   </script>

@@ -289,7 +289,7 @@
           </div>
           <div class="room-footer">
             <div class="room-capacity">&#128101; Up to ${room.capacity} guests</div>
-            <a href="${BASE}/dashboard/bookings?roomId=${room.id}&roomNumber=${room.roomNumber}&roomType=${encodeURIComponent(room.type)}&price=${room.price}" class="btn-book">Book Now</a>
+            <a href="${BASE}/bookings?roomId=${room.id}&roomNumber=${room.roomNumber}&roomType=${encodeURIComponent(room.type)}&price=${room.price}" class="btn-book">Book Now</a>
           </div>
         </div>
       `).join('');

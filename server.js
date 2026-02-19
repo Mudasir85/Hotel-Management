@@ -537,35 +537,35 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-app.get('/dashboard/bookings', (req, res) => {
+app.get('/bookings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/dashboard/rooms', (req, res) => {
+app.get('/rooms', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'rooms.html'));
 });
 
-app.get('/dashboard/about', (req, res) => {
+app.get('/about', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'about.html'));
 });
 
-app.get('/dashboard/gallery', (req, res) => {
+app.get('/gallery', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
 });
 
-app.get('/dashboard/blogs', (req, res) => {
+app.get('/blogs', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'blogs.html'));
 });
 
-app.get('/dashboard/contact', (req, res) => {
+app.get('/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
 });
 
-app.get('/dashboard/profile', (req, res) => {
+app.get('/profile', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'profile.html'));
 });
 
-app.get('/dashboard/settings', (req, res) => {
+app.get('/settings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'settings.html'));
 });
 
