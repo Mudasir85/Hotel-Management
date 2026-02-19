@@ -30,13 +30,60 @@ db.serialize(() => {
       guest_phone TEXT NOT NULL,
       room_number TEXT NOT NULL,
       check_in_date DATE NOT NULL,
-      check_out_date DATE NOT NULL
+      check_out_date DATE NOT NULL,
+      members INTEGER NOT NULL DEFAULT 1
     )
   `);
 
-  // Add members column if it doesn't exist
-  db.run(`ALTER TABLE bookings ADD COLUMN members INTEGER DEFAULT 1`, (err) => {
-    // Ignore error if column already exists
+  // Ensure bookings.members exists and is enforced as INTEGER NOT NULL DEFAULT 1.
+  db.all(`PRAGMA table_info(bookings)`, (err, columns) => {
+    if (err) {
+      console.error('Failed to inspect bookings schema:', err.message);
+      return;
+    }
+
+    const membersCol = columns.find((col) => col.name === 'members');
+
+    if (!membersCol) {
+      db.run(`ALTER TABLE bookings ADD COLUMN members INTEGER NOT NULL DEFAULT 1`, (alterErr) => {
+        if (alterErr) {
+          console.error('Failed to add members column:', alterErr.message);
+          return;
+        }
+        db.run(`UPDATE bookings SET members = 1 WHERE members IS NULL`);
+      });
+      return;
+    }
+
+    db.run(`UPDATE bookings SET members = 1 WHERE members IS NULL`);
+
+    const defaultVal = String(membersCol.dflt_value ?? '').replace(/[()'"]/g, '').trim();
+    const needsRebuild = membersCol.notnull !== 1 || defaultVal !== '1';
+
+    if (!needsRebuild) {
+      return;
+    }
+
+    db.run(`BEGIN TRANSACTION`);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS bookings_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guest_name TEXT NOT NULL,
+        guest_phone TEXT NOT NULL,
+        room_number TEXT NOT NULL,
+        check_in_date DATE NOT NULL,
+        check_out_date DATE NOT NULL,
+        members INTEGER NOT NULL DEFAULT 1
+      )
+    `);
+    db.run(`
+      INSERT INTO bookings_new (id, guest_name, guest_phone, room_number, check_in_date, check_out_date, members)
+      SELECT id, guest_name, guest_phone, room_number, check_in_date, check_out_date, COALESCE(members, 1)
+      FROM bookings
+    `);
+    db.run(`DROP TABLE bookings`);
+    db.run(`ALTER TABLE bookings_new RENAME TO bookings`);
+    db.run(`COMMIT`);
   });
 
   db.run(`
@@ -308,7 +355,11 @@ app.get('/api/rooms/capacity', authenticateToken, (req, res) => {
 
 // GET /api/bookings - List all bookings
 app.get('/api/bookings', authenticateToken, (req, res) => {
-  db.all('SELECT * FROM bookings ORDER BY check_in_date ASC', [], (err, rows) => {
+  db.all(`
+    SELECT id, guest_name, guest_phone, room_number, check_in_date, check_out_date, COALESCE(members, 1) AS members
+    FROM bookings
+    ORDER BY check_in_date ASC
+  `, [], (err, rows) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to fetch bookings' });
     }
@@ -384,7 +435,11 @@ app.post('/api/bookings', authenticateToken, (req, res) => {
 app.get('/api/bookings/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
 
-  db.get('SELECT * FROM bookings WHERE id = ?', [id], (err, row) => {
+  db.get(`
+    SELECT id, guest_name, guest_phone, room_number, check_in_date, check_out_date, COALESCE(members, 1) AS members
+    FROM bookings
+    WHERE id = ?
+  `, [id], (err, row) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to fetch booking' });
     }
