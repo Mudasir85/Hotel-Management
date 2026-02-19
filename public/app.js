@@ -278,10 +278,6 @@ function renderHeader() {
           </a>
         </div>
       </div>
-      <button onclick="Auth.logout()" class="top-header-logout">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6M10.5 11.5L14 8l-3.5-3.5M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Logout
-      </button>
     </div>
   `;
 
@@ -387,30 +383,6 @@ function injectHeaderStyles() {
 
     .top-header-user:hover .top-header-chevron {
       color: #fff;
-    }
-
-    .top-header-logout {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.8);
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .top-header-logout:hover {
-      background: rgba(255,255,255,0.15);
-      color: #fff;
-    }
-
-    .top-header-logout svg {
-      flex-shrink: 0;
     }
 
     /* ── User Dropdown ── */
