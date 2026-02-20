@@ -1,6 +1,8 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
@@ -9,6 +11,12 @@ const PORT = 3000;
 const JWT_SECRET = 'hotel-booking-secret-key-change-in-production';
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
+const AVATAR_UPLOAD_DIR = path.join(__dirname, 'public', 'uploads', 'avatars');
+const AVATAR_URL_PREFIX = '/sitesh/uploads/avatars/';
+
+if (!fs.existsSync(AVATAR_UPLOAD_DIR)) {
+  fs.mkdirSync(AVATAR_UPLOAD_DIR, { recursive: true });
+}
 
 // Middleware
 app.use(express.json({ limit: '5mb' }));
@@ -106,6 +114,26 @@ db.serialize(() => {
   db.run(`ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''`, (err) => {});
   db.run(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''`, (err) => {});
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS staff (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      shift TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email TEXT NOT NULL,
+      duty_status INTEGER NOT NULL DEFAULT 1,
+      avatar_icon TEXT NOT NULL DEFAULT 'user'
+    )
+  `);
+  db.run(`ALTER TABLE staff ADD COLUMN name TEXT NOT NULL DEFAULT ''`, (err) => {});
+  db.run(`ALTER TABLE staff ADD COLUMN role TEXT NOT NULL DEFAULT ''`, (err) => {});
+  db.run(`ALTER TABLE staff ADD COLUMN shift TEXT NOT NULL DEFAULT ''`, (err) => {});
+  db.run(`ALTER TABLE staff ADD COLUMN phone TEXT NOT NULL DEFAULT ''`, (err) => {});
+  db.run(`ALTER TABLE staff ADD COLUMN email TEXT NOT NULL DEFAULT ''`, (err) => {});
+  db.run(`ALTER TABLE staff ADD COLUMN duty_status INTEGER NOT NULL DEFAULT 1`, (err) => {});
+  db.run(`ALTER TABLE staff ADD COLUMN avatar_icon TEXT NOT NULL DEFAULT 'user'`, (err) => {});
+
   // Seed a default admin user (password: admin123)
   const defaultPassword = bcrypt.hashSync('admin123', 10);
   db.run(
@@ -125,6 +153,16 @@ const ROOM_CAPACITY = {
 };
 
 const TOTAL_ROOMS = 6;
+const STAFF_ROLES = new Set(['Manager', 'Chef', 'Waiter', 'Cashier', 'Helper', 'Receptionist']);
+const STAFF_SHIFTS = new Set(['Morning', 'Evening', 'Full Day']);
+const STAFF_ROLE_ICONS = {
+  Manager: '\u{1F464}',
+  Chef: '\u{1F373}',
+  Waiter: '\u{1F9D1}\u200D\u{1F37C}',
+  Cashier: '\u{1F4B5}',
+  Helper: '\u{1F6E0}',
+  Receptionist: '\u{1F481}'
+};
 
 // ─── Auth Middleware ───────────────────────────────────────────────
 function authenticateToken(req, res, next) {
@@ -146,6 +184,69 @@ function authenticateToken(req, res, next) {
 
 function isValidDataImageUrl(value) {
   return typeof value === 'string' && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value);
+}
+
+function isValidAvatarUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  if (isValidDataImageUrl(value)) return true;
+  if (value.startsWith(AVATAR_URL_PREFIX)) return true;
+  return /^https?:\/\/[^\s]+$/i.test(value);
+}
+
+function getAvatarFileExtension(mimeType) {
+  const extensionMap = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/webp': 'webp',
+    'image/gif': 'gif'
+  };
+  return extensionMap[mimeType] || null;
+}
+
+function getAvatarDiskPathFromUrl(avatarUrl) {
+  if (typeof avatarUrl !== 'string') return '';
+  if (!avatarUrl.startsWith(AVATAR_URL_PREFIX)) return '';
+  const filename = avatarUrl.slice(AVATAR_URL_PREFIX.length);
+  if (!filename || filename.includes('/') || filename.includes('\\')) return '';
+  return path.join(AVATAR_UPLOAD_DIR, filename);
+}
+
+function isAdminUser(req) {
+  return req.user && req.user.username === 'admin';
+}
+
+function parseStaffPayload(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const role = typeof body.role === 'string' ? body.role.trim() : '';
+  const shift = typeof body.shift === 'string' ? body.shift.trim() : '';
+  const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  return { name, role, shift, phone, email };
+}
+
+function validateStaffPayload(payload) {
+  if (!payload.name || !payload.role || !payload.shift || !payload.phone || !payload.email) {
+    return 'All fields are required';
+  }
+
+  if (!STAFF_ROLES.has(payload.role)) {
+    return 'Invalid role selected';
+  }
+
+  if (!STAFF_SHIFTS.has(payload.shift)) {
+    return 'Invalid shift selected';
+  }
+
+  if (!/^\d{10}$/.test(payload.phone)) {
+    return 'Phone must be exactly 10 digits';
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+    return 'Invalid email format';
+  }
+
+  return '';
 }
 
 function parseMultipartFormData(buffer, boundary) {
@@ -290,6 +391,7 @@ app.get('/api/profile', authenticateToken, (req, res) => {
 app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-data', limit: '5mb' }), (req, res) => {
   let body = req.body || {};
   let avatarUrl = '';
+  let avatarFile = null;
 
   const contentType = req.headers['content-type'] || '';
   const isMultipart = contentType.includes('multipart/form-data');
@@ -302,7 +404,7 @@ app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-
     }
 
     body = parseMultipartFormData(req.body, boundary);
-    const avatarFile = body.avatar;
+    avatarFile = body.avatar;
 
     if (avatarFile && avatarFile.buffer && avatarFile.buffer.length > 0) {
       if (!ALLOWED_AVATAR_MIME.has(avatarFile.mimeType)) {
@@ -311,7 +413,6 @@ app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-
       if (avatarFile.buffer.length > AVATAR_MAX_BYTES) {
         return res.status(400).json({ error: 'Avatar image is too large (max 2MB)' });
       }
-      avatarUrl = `data:${avatarFile.mimeType};base64,${avatarFile.buffer.toString('base64')}`;
     }
   }
 
@@ -320,14 +421,16 @@ app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-
   const phone = typeof body.phone === 'string' ? body.phone : '';
   const rawAvatarUrl = typeof body.avatar_url === 'string' ? body.avatar_url : '';
 
-  if (!avatarUrl && rawAvatarUrl) {
-    if (!isValidDataImageUrl(rawAvatarUrl)) {
+  if (rawAvatarUrl) {
+    if (!isValidAvatarUrl(rawAvatarUrl)) {
       return res.status(400).json({ error: 'Invalid avatar image format' });
     }
-    const base64Part = rawAvatarUrl.split(',')[1] || '';
-    const decodedBytes = Buffer.byteLength(base64Part, 'base64');
-    if (decodedBytes > AVATAR_MAX_BYTES) {
-      return res.status(400).json({ error: 'Avatar image is too large (max 2MB)' });
+    if (isValidDataImageUrl(rawAvatarUrl)) {
+      const base64Part = rawAvatarUrl.split(',')[1] || '';
+      const decodedBytes = Buffer.byteLength(base64Part, 'base64');
+      if (decodedBytes > AVATAR_MAX_BYTES) {
+        return res.status(400).json({ error: 'Avatar image is too large (max 2MB)' });
+      }
     }
     avatarUrl = rawAvatarUrl;
   }
@@ -344,28 +447,64 @@ app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-
     return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
   }
 
-  db.run(
-    'UPDATE users SET full_name = ?, email = ?, phone = ?, avatar_url = ? WHERE id = ?',
-    [full_name.trim(), email || '', phone || '', avatarUrl || '', req.user.id],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to update profile' });
+  db.get('SELECT avatar_url FROM users WHERE id = ?', [req.user.id], (existingErr, existingUser) => {
+    if (existingErr) {
+      return res.status(500).json({ error: 'Failed to update profile' });
+    }
+
+    const existingAvatarUrl = existingUser && existingUser.avatar_url ? existingUser.avatar_url : '';
+
+    const finishUpdate = (finalAvatarUrl) => {
+      db.run(
+        'UPDATE users SET full_name = ?, email = ?, phone = ?, avatar_url = ? WHERE id = ?',
+        [full_name.trim(), email || '', phone || '', finalAvatarUrl || '', req.user.id],
+        function (err) {
+          if (err) {
+            return res.status(500).json({ error: 'Failed to update profile' });
+          }
+
+          // Re-issue token with updated name
+          const token = jwt.sign(
+            { id: req.user.id, username: req.user.username, full_name: full_name.trim() },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+          );
+
+          res.json({
+            message: 'Profile updated successfully',
+            token,
+            user: { id: req.user.id, username: req.user.username, full_name: full_name.trim(), email: email || '', phone: phone || '', avatar_url: finalAvatarUrl || '' }
+          });
+        }
+      );
+    };
+
+    if (!avatarFile || !avatarFile.buffer || avatarFile.buffer.length === 0) {
+      return finishUpdate(avatarUrl || existingAvatarUrl || '');
+    }
+
+    const extension = getAvatarFileExtension(avatarFile.mimeType);
+    if (!extension) {
+      return res.status(400).json({ error: 'Unsupported avatar format' });
+    }
+
+    const filename = `${req.user.id}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const diskPath = path.join(AVATAR_UPLOAD_DIR, filename);
+    const nextAvatarUrl = `${AVATAR_URL_PREFIX}${filename}`;
+
+    fs.writeFile(diskPath, avatarFile.buffer, (writeErr) => {
+      if (writeErr) {
+        return res.status(500).json({ error: 'Failed to save avatar image' });
       }
 
-      // Re-issue token with updated name
-      const token = jwt.sign(
-        { id: req.user.id, username: req.user.username, full_name: full_name.trim() },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+      const oldAvatarDiskPath = getAvatarDiskPathFromUrl(existingAvatarUrl);
+      if (oldAvatarDiskPath && oldAvatarDiskPath !== diskPath) {
+        fs.unlink(oldAvatarDiskPath, () => {});
+      }
 
-      res.json({
-        message: 'Profile updated successfully',
-        token,
-        user: { id: req.user.id, username: req.user.username, full_name: full_name.trim(), email: email || '', phone: phone || '', avatar_url: avatarUrl || '' }
-      });
-    }
-  );
+      return finishUpdate(nextAvatarUrl);
+    });
+  });
 });
 
 // ─── Settings Routes ────────────────────────────────────────────
@@ -403,6 +542,47 @@ app.post('/api/settings/password', authenticateToken, (req, res) => {
       }
       res.json({ message: 'Password changed successfully' });
     });
+  });
+});
+
+// ─── Admin Reports ──────────────────────────────────────────────
+
+// GET /api/admin/reports/avatars - Count avatar storage types
+app.get('/api/admin/reports/avatars', authenticateToken, (req, res) => {
+  if (!isAdminUser(req)) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  db.all('SELECT avatar_url FROM users', [], (err, users) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to generate avatar report' });
+    }
+
+    const report = {
+      totalUsers: users.length,
+      empty: 0,
+      dataUrl: 0,
+      localFileUrl: 0,
+      httpUrl: 0,
+      other: 0
+    };
+
+    for (const user of users) {
+      const value = typeof user.avatar_url === 'string' ? user.avatar_url.trim() : '';
+      if (!value) {
+        report.empty += 1;
+      } else if (isValidDataImageUrl(value)) {
+        report.dataUrl += 1;
+      } else if (value.startsWith(AVATAR_URL_PREFIX)) {
+        report.localFileUrl += 1;
+      } else if (/^https?:\/\/[^\s]+$/i.test(value)) {
+        report.httpUrl += 1;
+      } else {
+        report.other += 1;
+      }
+    }
+
+    res.json(report);
   });
 });
 
@@ -617,6 +797,152 @@ app.delete('/api/bookings/:id', authenticateToken, (req, res) => {
   });
 });
 
+// ─── Staff Routes (Protected) ───────────────────────────────────
+
+// GET /api/staff - List all staff records
+app.get('/api/staff', authenticateToken, (req, res) => {
+  db.all(`
+    SELECT id, name, role, shift, phone, email, duty_status, avatar_icon
+    FROM staff
+    ORDER BY name COLLATE NOCASE ASC
+  `, [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch staff' });
+    }
+    const normalized = rows.map((row) => ({
+      ...row,
+      duty_status: !!row.duty_status
+    }));
+    res.json(normalized);
+  });
+});
+
+// GET /api/staff/:id - Get a single staff record
+app.get('/api/staff/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.get(`
+    SELECT id, name, role, shift, phone, email, duty_status, avatar_icon
+    FROM staff
+    WHERE id = ?
+  `, [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch staff member' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+    res.json({
+      ...row,
+      duty_status: !!row.duty_status
+    });
+  });
+});
+
+// POST /api/staff - Create a staff record
+app.post('/api/staff', authenticateToken, (req, res) => {
+  const payload = parseStaffPayload(req.body || {});
+  const validationError = validateStaffPayload(payload);
+
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const avatarIcon = STAFF_ROLE_ICONS[payload.role] || '\u{1F464}';
+  db.run(
+    `INSERT INTO staff (name, role, shift, phone, email, duty_status, avatar_icon) VALUES (?, ?, ?, ?, ?, 1, ?)`,
+    [payload.name, payload.role, payload.shift, payload.phone, payload.email, avatarIcon],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create staff member' });
+      }
+
+      res.status(201).json({
+        id: this.lastID,
+        ...payload,
+        duty_status: true,
+        avatar_icon: avatarIcon
+      });
+    }
+  );
+});
+
+// PUT /api/staff/:id - Update a staff record
+app.put('/api/staff/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parseStaffPayload(req.body || {});
+  const validationError = validateStaffPayload(payload);
+
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const avatarIcon = STAFF_ROLE_ICONS[payload.role] || '\u{1F464}';
+  db.run(
+    `UPDATE staff SET name = ?, role = ?, shift = ?, phone = ?, email = ?, avatar_icon = ? WHERE id = ?`,
+    [payload.name, payload.role, payload.shift, payload.phone, payload.email, avatarIcon, id],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update staff member' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Staff member not found' });
+      }
+
+      db.get(
+        `SELECT id, name, role, shift, phone, email, duty_status, avatar_icon FROM staff WHERE id = ?`,
+        [id],
+        (selectErr, row) => {
+          if (selectErr || !row) {
+            return res.status(500).json({ error: 'Failed to fetch updated staff member' });
+          }
+          res.json({
+            ...row,
+            duty_status: !!row.duty_status
+          });
+        }
+      );
+    }
+  );
+});
+
+// POST /api/staff/:id/toggle-duty - Toggle duty status
+app.post('/api/staff/:id/toggle-duty', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.get(`SELECT duty_status FROM staff WHERE id = ?`, [id], (err, staffRow) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to update duty status' });
+    }
+    if (!staffRow) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    const nextStatus = staffRow.duty_status ? 0 : 1;
+    db.run(`UPDATE staff SET duty_status = ? WHERE id = ?`, [nextStatus, id], (updateErr) => {
+      if (updateErr) {
+        return res.status(500).json({ error: 'Failed to update duty status' });
+      }
+      res.json({ id: Number(id), duty_status: !!nextStatus });
+    });
+  });
+});
+
+// DELETE /api/staff/:id - Delete a staff record
+app.delete('/api/staff/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.run('DELETE FROM staff WHERE id = ?', [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to delete staff member' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+    res.json({ message: 'Staff member deleted' });
+  });
+});
+
 // ─── Page Routes ─────────────────────────────────────────────────
 
 // Public routes
@@ -627,6 +953,10 @@ app.get('/login', (req, res) => {
 // Protected dashboard routes (auth checked client-side via app.js)
 app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/dashboard/staff', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'staff.html'));
 });
 
 app.get('/bookings', (req, res) => {

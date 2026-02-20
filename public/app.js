@@ -68,6 +68,9 @@ function renderSidebar(activePage) {
         <a href="${BASE}/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
           <span class="nav-icon">&#128203;</span> Bookings
         </a>
+        <a href="${BASE}/dashboard/staff" class="${activePage === 'staff' ? 'active' : ''}">
+          <span class="nav-icon">&#128104;</span> Staff
+        </a>
         <a href="${BASE}/about" class="${activePage === 'about' ? 'active' : ''}">
           <span class="nav-icon">&#8505;</span> About Us
         </a>
@@ -237,7 +240,10 @@ function getInitials(name) {
 
 function getAvatarMarkup(user, className) {
   const avatarUrl = user && typeof user.avatar_url === 'string' ? user.avatar_url : '';
-  if (avatarUrl && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatarUrl)) {
+  const isDataUrl = /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatarUrl);
+  const isRelativeUrl = avatarUrl.startsWith('/');
+  const isHttpUrl = /^https?:\/\/[^\s]+$/i.test(avatarUrl);
+  if (avatarUrl && (isDataUrl || isRelativeUrl || isHttpUrl)) {
     const safeUrl = avatarUrl.replace(/"/g, '&quot;');
     return `<img src="${safeUrl}" alt="Avatar">`;
   }
@@ -713,7 +719,9 @@ function isAppRoute(pathname) {
 function getActivePageFromPath(pathname) {
   const afterBase = pathname.slice(BASE.length);
   const segments = afterBase.split('/').filter(Boolean);
-  if (segments.length === 0 || segments[0] === 'dashboard') return 'dashboard';
+  if (segments.length === 0) return 'dashboard';
+  if (segments[0] === 'dashboard' && segments[1] === 'staff') return 'staff';
+  if (segments[0] === 'dashboard') return 'dashboard';
   return segments[0];
 }
 

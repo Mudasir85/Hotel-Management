@@ -276,7 +276,10 @@
 
     function renderProfileAvatar(avatarUrl, fallbackName) {
       const avatarEl = document.getElementById('profileAvatar');
-      if (avatarUrl && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatarUrl)) {
+      const isDataUrl = /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatarUrl);
+      const isRelativeUrl = typeof avatarUrl === 'string' && avatarUrl.startsWith('/');
+      const isHttpUrl = /^https?:\/\/[^\s]+$/i.test(avatarUrl || '');
+      if (avatarUrl && (isDataUrl || isRelativeUrl || isHttpUrl)) {
         const safeUrl = avatarUrl.replace(/"/g, '&quot;');
         avatarEl.innerHTML = `<img src="${safeUrl}" alt="Avatar">`;
         return;

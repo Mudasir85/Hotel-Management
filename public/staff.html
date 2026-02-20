@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Management - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .container {
+      flex: 1;
+      padding: 24px;
+    }
+
+    .staff-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .staff-title h1 {
+      font-size: 1.45rem;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+
+    .duty-count {
+      font-size: 0.92rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .btn-add {
+      background: #1a73e8;
+      color: #fff;
+      padding: 10px 16px;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover {
+      background: #1557b0;
+    }
+
+    .staff-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .staff-card {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .staff-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .staff-person {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .staff-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #e8f0fe;
+      color: #1a73e8;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .staff-details {
+      min-width: 0;
+    }
+
+    .staff-name {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .staff-role {
+      font-size: 0.85rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .status-badge {
+      font-size: 0.73rem;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 5px 10px;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .status-badge.on {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+
+    .status-badge.off {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    .staff-meta {
+      display: grid;
+      gap: 7px;
+      font-size: 0.84rem;
+      color: #4b5563;
+    }
+
+    .staff-meta span {
+      color: #111827;
+      font-weight: 600;
+    }
+
+    .staff-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .btn-edit {
+      background: #0d6efd;
+      color: #fff;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+    }
+
+    .btn-edit:hover {
+      background: #0a58ca;
+    }
+
+    .btn-delete {
+      background: #dc3545;
+      color: #fff;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+    }
+
+    .btn-delete:hover {
+      background: #b02a37;
+    }
+
+    .duty-toggle {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #d1d5db;
+      background: #fff;
+      cursor: pointer;
+      transition: 0.18s ease;
+      position: relative;
+    }
+
+    .duty-toggle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: #9ca3af;
+    }
+
+    .duty-toggle.on {
+      border-color: #16a34a;
+      background: #dcfce7;
+    }
+
+    .duty-toggle.on::after {
+      background: #16a34a;
+    }
+
+    .duty-toggle.off {
+      border-color: #dc2626;
+      background: #fee2e2;
+    }
+
+    .duty-toggle.off::after {
+      background: #dc2626;
+    }
+
+    .empty-state {
+      text-align: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 36px;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 540px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 32px rgba(0,0,0,0.2);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal h2 {
+      font-size: 1.15rem;
+      color: #1a73e8;
+      margin-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-group label {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .form-group input,
+    .form-group select {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .modal-actions {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .confirm-text {
+      color: #4b5563;
+      line-height: 1.45;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1200px) {
+      .staff-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .staff-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .staff-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn-add {
+        width: 100%;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="staff-header">
+        <div class="staff-title">
+          <h1>Staff Management</h1>
+          <div class="duty-count" id="dutyCount">0 on duty today</div>
+        </div>
+        <button class="btn btn-add" onclick="openStaffModal()">+ Add Staff</button>
+      </div>
+
+      <div id="staffContainer" class="staff-grid"></div>
+    </div>
+  </div>
+
+  <div id="staffModal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="staffModalTitle">Add Staff Member</h2>
+      <form id="staffForm">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="staffName">Name</label>
+            <input type="text" id="staffName" required placeholder="Enter full name">
+          </div>
+
+          <div class="form-group">
+            <label for="staffRole">Role</label>
+            <select id="staffRole" required>
+              <option value="">Select role</option>
+              <option value="Manager">Manager</option>
+              <option value="Chef">Chef</option>
+              <option value="Waiter">Waiter</option>
+              <option value="Cashier">Cashier</option>
+              <option value="Helper">Helper</option>
+              <option value="Receptionist">Receptionist</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="staffShift">Shift</label>
+            <select id="staffShift" required>
+              <option value="">Select shift</option>
+              <option value="Morning">Morning</option>
+              <option value="Evening">Evening</option>
+              <option value="Full Day">Full Day</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="staffPhone">Phone</label>
+            <input type="tel" id="staffPhone" required pattern="\d{10}" maxlength="10" placeholder="0000000000">
+          </div>
+
+          <div class="form-group">
+            <label for="staffEmail">Email</label>
+            <input type="email" id="staffEmail" required placeholder="name@hotel.com">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeStaffModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="staffSaveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal" style="max-width: 420px;">
+      <h2>Delete Staff Member</h2>
+      <p class="confirm-text" id="deleteConfirmText"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-delete" onclick="confirmDeleteStaff()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('staff')) throw new Error('Not authenticated');
+
+    const STAFF_API = BASE + '/api/staff';
+    const staffContainer = document.getElementById('staffContainer');
+    const dutyCountEl = document.getElementById('dutyCount');
+    const staffModal = document.getElementById('staffModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const staffForm = document.getElementById('staffForm');
+
+    let staffList = [];
+    let editingStaffId = null;
+    let pendingDeleteId = null;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function updateDutyCount() {
+      const onDuty = staffList.filter((staff) => staff.duty_status).length;
+      dutyCountEl.textContent = `${onDuty} on duty today`;
+    }
+
+    function renderStaffCards() {
+      if (!staffList.length) {
+        staffContainer.className = '';
+        staffContainer.innerHTML = '<div class="empty-state">No staff members added yet.</div>';
+        updateDutyCount();
+        return;
+      }
+
+      staffContainer.className = 'staff-grid';
+      staffContainer.innerHTML = staffList.map((staff) => {
+        const dutyClass = staff.duty_status ? 'on' : 'off';
+        const dutyLabel = staff.duty_status ? 'ON DUTY' : 'OFF DUTY';
+        const safeName = escapeHtml(staff.name);
+        const safeRole = escapeHtml(staff.role);
+        const safeShift = escapeHtml(staff.shift);
+        const safePhone = escapeHtml(staff.phone);
+        const safeEmail = escapeHtml(staff.email);
+        const safeAvatar = escapeHtml(staff.avatar_icon || '\u{1F464}');
+        return `
+          <div class="staff-card">
+            <div class="staff-card-top">
+              <div class="staff-person">
+                <div class="staff-avatar">${safeAvatar}</div>
+                <div class="staff-details">
+                  <div class="staff-name">${safeName}</div>
+                  <div class="staff-role">${safeRole}</div>
+                </div>
+              </div>
+              <span class="status-badge ${dutyClass}">${dutyLabel}</span>
+            </div>
+
+            <div class="staff-meta">
+              <div>Shift: <span>${safeShift}</span></div>
+              <div>Phone: <span>${safePhone}</span></div>
+              <div>Email: <span>${safeEmail}</span></div>
+            </div>
+
+            <div class="staff-actions">
+              <button class="btn btn-edit" onclick="openStaffModal(${staff.id})">Edit</button>
+              <button
+                class="duty-toggle ${dutyClass}"
+                title="Toggle duty status"
+                onclick="toggleDutyStatus(${staff.id})">
+              </button>
+              <button class="btn btn-delete" onclick="openDeleteModal(${staff.id})">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateDutyCount();
+    }
+
+    async function loadStaff() {
+      try {
+        const response = await fetch(STAFF_API, { headers: Auth.headers() });
+
+        if (response.status === 401 || response.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!response.ok) {
+          staffContainer.className = '';
+          staffContainer.innerHTML = '<div class="empty-state">Failed to load staff members.</div>';
+          return;
+        }
+
+        staffList = await response.json();
+        renderStaffCards();
+      } catch {
+        staffContainer.className = '';
+        staffContainer.innerHTML = '<div class="empty-state">Failed to load staff members.</div>';
+      }
+    }
+
+    function resetStaffForm() {
+      staffForm.reset();
+      editingStaffId = null;
+      document.getElementById('staffModalTitle').textContent = 'Add Staff Member';
+      document.getElementById('staffSaveBtn').textContent = 'Save';
+    }
+
+    function openStaffModal(staffId = null) {
+      resetStaffForm();
+
+      if (staffId) {
+        const staff = staffList.find((item) => item.id === staffId);
+        if (!staff) {
+          showToast('Staff member not found', 'error');
+          return;
+        }
+
+        editingStaffId = staff.id;
+        document.getElementById('staffModalTitle').textContent = 'Edit Staff Member';
+        document.getElementById('staffSaveBtn').textContent = 'Update';
+        document.getElementById('staffName').value = staff.name;
+        document.getElementById('staffRole').value = staff.role;
+        document.getElementById('staffShift').value = staff.shift;
+        document.getElementById('staffPhone').value = staff.phone;
+        document.getElementById('staffEmail').value = staff.email;
+      }
+
+      staffModal.classList.add('open');
+    }
+
+    function closeStaffModal() {
+      staffModal.classList.remove('open');
+      resetStaffForm();
+    }
+
+    function openDeleteModal(staffId) {
+      const staff = staffList.find((item) => item.id === staffId);
+      if (!staff) {
+        showToast('Staff member not found', 'error');
+        return;
+      }
+
+      pendingDeleteId = staffId;
+      document.getElementById('deleteConfirmText').textContent =
+        `Are you sure you want to delete ${staff.name} (${staff.role})?`;
+      deleteModal.classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      deleteModal.classList.remove('open');
+    }
+
+    staffModal.addEventListener('click', (event) => {
+      if (event.target === staffModal) {
+        closeStaffModal();
+      }
+    });
+
+    deleteModal.addEventListener('click', (event) => {
+      if (event.target === deleteModal) {
+        closeDeleteModal();
+      }
+    });
+
+    staffForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        name: document.getElementById('staffName').value.trim(),
+        role: document.getElementById('staffRole').value,
+        shift: document.getElementById('staffShift').value,
+        phone: document.getElementById('staffPhone').value.trim(),
+        email: document.getElementById('staffEmail').value.trim()
+      };
+
+      const isEdit = !!editingStaffId;
+      const url = isEdit ? `${STAFF_API}/${editingStaffId}` : STAFF_API;
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: Auth.headers(),
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.status === 401 || response.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!response.ok) {
+          showToast(result.error || 'Operation failed', 'error');
+          return;
+        }
+
+        closeStaffModal();
+        showToast(isEdit ? 'Staff member updated successfully' : 'Staff member added successfully', 'success');
+        loadStaff();
+      } catch {
+        showToast('Failed to save staff member', 'error');
+      }
+    });
+
+    async function confirmDeleteStaff() {
+      if (!pendingDeleteId) return;
+
+      try {
+        const response = await fetch(`${STAFF_API}/${pendingDeleteId}`, {
+          method: 'DELETE',
+          headers: Auth.headers()
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!response.ok) {
+          const result = await response.json();
+          showToast(result.error || 'Failed to delete staff member', 'error');
+          return;
+        }
+
+        closeDeleteModal();
+        showToast('Staff member deleted successfully', 'success');
+        loadStaff();
+      } catch {
+        showToast('Failed to delete staff member', 'error');
+      }
+    }
+
+    async function toggleDutyStatus(staffId) {
+      try {
+        const response = await fetch(`${STAFF_API}/${staffId}/toggle-duty`, {
+          method: 'POST',
+          headers: Auth.headers()
+        });
+
+        const result = await response.json();
+
+        if (response.status === 401 || response.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!response.ok) {
+          showToast(result.error || 'Failed to toggle duty status', 'error');
+          return;
+        }
+
+        const target = staffList.find((staff) => staff.id === staffId);
+        if (target) {
+          target.duty_status = !!result.duty_status;
+          renderStaffCards();
+        } else {
+          loadStaff();
+        }
+
+        showToast(result.duty_status ? 'Marked as ON DUTY' : 'Marked as OFF DUTY', 'success');
+      } catch {
+        showToast('Failed to toggle duty status', 'error');
+      }
+    }
+
+    window.openStaffModal = openStaffModal;
+    window.closeStaffModal = closeStaffModal;
+    window.openDeleteModal = openDeleteModal;
+    window.closeDeleteModal = closeDeleteModal;
+    window.confirmDeleteStaff = confirmDeleteStaff;
+    window.toggleDutyStatus = toggleDutyStatus;
+
+    loadStaff();
+  </script>
+</body>
+</html>
