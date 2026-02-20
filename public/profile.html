@@ -258,8 +258,10 @@
   <script>
     if (!initAppPage('profile')) throw new Error('Not authenticated');
 
-    const messageEl = document.getElementById('profileMessage');
     let currentAvatarUrl = '';
+    let selectedAvatarFile = null;
+    const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+    const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
     function getInitialsLocal(name) {
       if (!name) return 'U';
@@ -313,11 +315,19 @@
       const file = e.target.files[0];
       if (!file) return;
 
-      if (file.size > 2 * 1024 * 1024) {
-        showMsg('Image must be under 2MB.', 'error');
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        showMsg('Only PNG, JPG, JPEG, WEBP, or GIF is allowed.', 'error');
+        e.target.value = '';
         return;
       }
 
+      if (file.size > AVATAR_MAX_BYTES) {
+        showMsg('Image must be under 2MB.', 'error');
+        e.target.value = '';
+        return;
+      }
+
+      selectedAvatarFile = file;
       const reader = new FileReader();
       reader.onload = (ev) => {
         currentAvatarUrl = ev.target.result || '';
@@ -354,13 +364,31 @@
       btn.textContent = 'Saving...';
 
       try {
+        const formData = new FormData();
+        formData.append('full_name', fullName);
+        formData.append('email', email);
+        formData.append('phone', phone);
+        if (selectedAvatarFile) {
+          formData.append('avatar', selectedAvatarFile);
+        } else {
+          formData.append('avatar_url', currentAvatarUrl || '');
+        }
+
         const res = await fetch(BASE + '/api/profile', {
           method: 'POST',
-          headers: Auth.headers(),
-          body: JSON.stringify({ full_name: fullName, email, phone, avatar_url: currentAvatarUrl || '' })
+          headers: {
+            Authorization: `Bearer ${Auth.getToken()}`
+          },
+          body: formData
         });
 
-        const result = await res.json();
+        let result = {};
+        const rawText = await res.text();
+        try {
+          result = rawText ? JSON.parse(rawText) : {};
+        } catch {
+          result = {};
+        }
 
         if (res.status === 401 || res.status === 403) {
           Auth.logout();
@@ -368,7 +396,7 @@
         }
 
         if (!res.ok) {
-          showMsg(result.error, 'error');
+          showMsg(result.error || 'Failed to update profile.', 'error');
           return;
         }
 
@@ -385,6 +413,8 @@
         document.getElementById('profileDisplayEmail').textContent = email || document.getElementById('profileUsername').value + '@hotel.com';
         currentAvatarUrl = result.user && result.user.avatar_url ? result.user.avatar_url : currentAvatarUrl;
         renderProfileAvatar(currentAvatarUrl, fullName);
+        selectedAvatarFile = null;
+        document.getElementById('avatarInput').value = '';
 
         showMsg('Profile updated successfully!', 'success');
       } catch {

@@ -7,6 +7,8 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 3000;
 const JWT_SECRET = 'hotel-booking-secret-key-change-in-production';
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const ALLOWED_AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
 
 // Middleware
 app.use(express.json({ limit: '5mb' }));
@@ -142,6 +144,52 @@ function authenticateToken(req, res, next) {
   }
 }
 
+function isValidDataImageUrl(value) {
+  return typeof value === 'string' && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value);
+}
+
+function parseMultipartFormData(buffer, boundary) {
+  const result = {};
+  const boundaryBuffer = Buffer.from(`--${boundary}`);
+  const parts = [];
+  let start = buffer.indexOf(boundaryBuffer);
+
+  while (start !== -1) {
+    const next = buffer.indexOf(boundaryBuffer, start + boundaryBuffer.length);
+    if (next === -1) break;
+    const part = buffer.slice(start + boundaryBuffer.length + 2, next - 2);
+    if (part.length > 0) parts.push(part);
+    start = next;
+  }
+
+  for (const part of parts) {
+    const splitIndex = part.indexOf(Buffer.from('\r\n\r\n'));
+    if (splitIndex === -1) continue;
+
+    const headersRaw = part.slice(0, splitIndex).toString('utf8');
+    const content = part.slice(splitIndex + 4);
+    const dispositionMatch = headersRaw.match(/name="([^"]+)"/i);
+    if (!dispositionMatch) continue;
+
+    const fieldName = dispositionMatch[1];
+    const filenameMatch = headersRaw.match(/filename="([^"]*)"/i);
+    const contentTypeMatch = headersRaw.match(/content-type:\s*([^\r\n]+)/i);
+
+    if (filenameMatch) {
+      result[fieldName] = {
+        filename: filenameMatch[1],
+        mimeType: contentTypeMatch ? contentTypeMatch[1].trim().toLowerCase() : 'application/octet-stream',
+        buffer: content
+      };
+      continue;
+    }
+
+    result[fieldName] = content.toString('utf8');
+  }
+
+  return result;
+}
+
 // ─── Auth Routes ──────────────────────────────────────────────────
 
 // POST /api/auth/login
@@ -239,8 +287,50 @@ app.get('/api/profile', authenticateToken, (req, res) => {
 });
 
 // POST /api/profile - Update user profile
-app.post('/api/profile', authenticateToken, (req, res) => {
-  const { full_name, email, phone, avatar_url } = req.body;
+app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-data', limit: '5mb' }), (req, res) => {
+  let body = req.body || {};
+  let avatarUrl = '';
+
+  const contentType = req.headers['content-type'] || '';
+  const isMultipart = contentType.includes('multipart/form-data');
+
+  if (isMultipart && Buffer.isBuffer(req.body)) {
+    const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+    const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2]) : '';
+    if (!boundary) {
+      return res.status(400).json({ error: 'Invalid multipart request boundary' });
+    }
+
+    body = parseMultipartFormData(req.body, boundary);
+    const avatarFile = body.avatar;
+
+    if (avatarFile && avatarFile.buffer && avatarFile.buffer.length > 0) {
+      if (!ALLOWED_AVATAR_MIME.has(avatarFile.mimeType)) {
+        return res.status(400).json({ error: 'Avatar must be PNG, JPG, JPEG, WEBP, or GIF' });
+      }
+      if (avatarFile.buffer.length > AVATAR_MAX_BYTES) {
+        return res.status(400).json({ error: 'Avatar image is too large (max 2MB)' });
+      }
+      avatarUrl = `data:${avatarFile.mimeType};base64,${avatarFile.buffer.toString('base64')}`;
+    }
+  }
+
+  const full_name = typeof body.full_name === 'string' ? body.full_name : '';
+  const email = typeof body.email === 'string' ? body.email : '';
+  const phone = typeof body.phone === 'string' ? body.phone : '';
+  const rawAvatarUrl = typeof body.avatar_url === 'string' ? body.avatar_url : '';
+
+  if (!avatarUrl && rawAvatarUrl) {
+    if (!isValidDataImageUrl(rawAvatarUrl)) {
+      return res.status(400).json({ error: 'Invalid avatar image format' });
+    }
+    const base64Part = rawAvatarUrl.split(',')[1] || '';
+    const decodedBytes = Buffer.byteLength(base64Part, 'base64');
+    if (decodedBytes > AVATAR_MAX_BYTES) {
+      return res.status(400).json({ error: 'Avatar image is too large (max 2MB)' });
+    }
+    avatarUrl = rawAvatarUrl;
+  }
 
   if (!full_name || !full_name.trim()) {
     return res.status(400).json({ error: 'Full name is required' });
@@ -254,17 +344,9 @@ app.post('/api/profile', authenticateToken, (req, res) => {
     return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
   }
 
-  if (avatar_url && (typeof avatar_url !== 'string' || !/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatar_url))) {
-    return res.status(400).json({ error: 'Invalid avatar image format' });
-  }
-
-  if (avatar_url && avatar_url.length > 2 * 1024 * 1024 * 1.5) {
-    return res.status(400).json({ error: 'Avatar image is too large' });
-  }
-
   db.run(
     'UPDATE users SET full_name = ?, email = ?, phone = ?, avatar_url = ? WHERE id = ?',
-    [full_name.trim(), email || '', phone || '', avatar_url || '', req.user.id],
+    [full_name.trim(), email || '', phone || '', avatarUrl || '', req.user.id],
     function (err) {
       if (err) {
         return res.status(500).json({ error: 'Failed to update profile' });
@@ -280,7 +362,7 @@ app.post('/api/profile', authenticateToken, (req, res) => {
       res.json({
         message: 'Profile updated successfully',
         token,
-        user: { id: req.user.id, username: req.user.username, full_name: full_name.trim(), email: email || '', phone: phone || '', avatar_url: avatar_url || '' }
+        user: { id: req.user.id, username: req.user.username, full_name: full_name.trim(), email: email || '', phone: phone || '', avatar_url: avatarUrl || '' }
       });
     }
   );
