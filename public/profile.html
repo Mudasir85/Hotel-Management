@@ -259,6 +259,7 @@
     if (!initAppPage('profile')) throw new Error('Not authenticated');
 
     const messageEl = document.getElementById('profileMessage');
+    let currentAvatarUrl = '';
 
     function getInitialsLocal(name) {
       if (!name) return 'U';
@@ -269,6 +270,16 @@
 
     function showMsg(text, type) {
       showToast(text, type);
+    }
+
+    function renderProfileAvatar(avatarUrl, fallbackName) {
+      const avatarEl = document.getElementById('profileAvatar');
+      if (avatarUrl && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatarUrl)) {
+        const safeUrl = avatarUrl.replace(/"/g, '&quot;');
+        avatarEl.innerHTML = `<img src="${safeUrl}" alt="Avatar">`;
+        return;
+      }
+      avatarEl.textContent = getInitialsLocal(fallbackName);
     }
 
     // Load profile data
@@ -290,13 +301,14 @@
 
         document.getElementById('profileDisplayName').textContent = profile.full_name || 'User';
         document.getElementById('profileDisplayEmail').textContent = profile.email || profile.username + '@hotel.com';
-        document.getElementById('profileAvatar').textContent = getInitialsLocal(profile.full_name);
+        currentAvatarUrl = profile.avatar_url || '';
+        renderProfileAvatar(currentAvatarUrl, profile.full_name);
       } catch {
         showMsg('Failed to load profile.', 'error');
       }
     }
 
-    // Avatar preview (client-side only)
+    // Avatar preview + staged value for save
     document.getElementById('avatarInput').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -308,8 +320,8 @@
 
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const avatarEl = document.getElementById('profileAvatar');
-        avatarEl.innerHTML = `<img src="${ev.target.result}" alt="Avatar">`;
+        currentAvatarUrl = ev.target.result || '';
+        renderProfileAvatar(currentAvatarUrl, document.getElementById('profileFullName').value.trim());
       };
       reader.readAsDataURL(file);
     });
@@ -345,7 +357,7 @@
         const res = await fetch(BASE + '/api/profile', {
           method: 'POST',
           headers: Auth.headers(),
-          body: JSON.stringify({ full_name: fullName, email, phone })
+          body: JSON.stringify({ full_name: fullName, email, phone, avatar_url: currentAvatarUrl || '' })
         });
 
         const result = await res.json();
@@ -363,12 +375,16 @@
         // Update local storage with new token and user info
         if (result.token && result.user) {
           Auth.save(result.token, result.user);
+          if (typeof updateHeaderUserInfo === 'function') {
+            updateHeaderUserInfo();
+          }
         }
 
         // Update display
         document.getElementById('profileDisplayName').textContent = fullName;
         document.getElementById('profileDisplayEmail').textContent = email || document.getElementById('profileUsername').value + '@hotel.com';
-        document.getElementById('profileAvatar').textContent = getInitialsLocal(fullName);
+        currentAvatarUrl = result.user && result.user.avatar_url ? result.user.avatar_url : currentAvatarUrl;
+        renderProfileAvatar(currentAvatarUrl, fullName);
 
         showMsg('Profile updated successfully!', 'success');
       } catch {

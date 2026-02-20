@@ -196,6 +196,7 @@ function injectNavbarStyles() {
       flex-direction: column;
       min-height: 100vh;
       background: #f0f2f5;
+      padding-top: 60px;
     }
 
     @media (max-width: 768px) {
@@ -234,74 +235,107 @@ function getInitials(name) {
   return parts[0][0].toUpperCase();
 }
 
+function getAvatarMarkup(user, className) {
+  const avatarUrl = user && typeof user.avatar_url === 'string' ? user.avatar_url : '';
+  if (avatarUrl && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatarUrl)) {
+    const safeUrl = avatarUrl.replace(/"/g, '&quot;');
+    return `<img src="${safeUrl}" alt="Avatar">`;
+  }
+  return getInitials(user ? user.full_name : '');
+}
+
+function updateHeaderUserInfo() {
+  const header = document.querySelector('.top-header');
+  if (!header) return;
+
+  const user = Auth.getUser();
+  const fullName = user && user.full_name ? user.full_name : 'User';
+  const email = user ? (user.email || user.username + '@hotel.com') : 'user@hotel.com';
+  const avatarMarkup = getAvatarMarkup(user, 'top-header-avatar');
+
+  const topAvatar = header.querySelector('.top-header-avatar');
+  const topName = header.querySelector('.top-header-name');
+  const dropdownAvatar = header.querySelector('.user-dropdown-avatar');
+  const dropdownName = header.querySelector('.user-dropdown-name');
+  const dropdownEmail = header.querySelector('.user-dropdown-email');
+
+  if (topAvatar) topAvatar.innerHTML = avatarMarkup;
+  if (topName) topName.textContent = fullName;
+  if (dropdownAvatar) dropdownAvatar.innerHTML = avatarMarkup;
+  if (dropdownName) dropdownName.textContent = fullName;
+  if (dropdownEmail) dropdownEmail.textContent = email;
+}
+
 function renderHeader() {
   const mainContent = document.querySelector('.main-content');
   if (!mainContent) return;
 
-  const user = Auth.getUser();
-  const initials = getInitials(user ? user.full_name : '');
-  const fullName = user ? user.full_name : 'User';
-  const email = user ? (user.email || user.username + '@hotel.com') : 'user@hotel.com';
+  const existingHeaders = Array.from(mainContent.querySelectorAll('.top-header'));
+  if (existingHeaders.length > 1) {
+    existingHeaders.slice(1).forEach((el) => el.remove());
+  }
 
-  const header = document.createElement('div');
-  header.className = 'top-header';
-  header.innerHTML = `
-    <div class="top-header-title">Hotel Booking & Reservation</div>
-    <div class="top-header-right">
-      <div class="top-header-user" id="userDropdownToggle">
-        <div class="top-header-avatar">${initials}</div>
-        <span class="top-header-name">${fullName}</span>
-        <svg class="top-header-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <div class="user-dropdown" id="userDropdown">
-          <div class="user-dropdown-header">
-            <div class="user-dropdown-avatar">${initials}</div>
-            <div class="user-dropdown-info">
-              <span class="user-dropdown-name">${fullName}</span>
-              <span class="user-dropdown-email">${email}</span>
+  let header = mainContent.querySelector('.top-header');
+  if (!header) {
+    header = document.createElement('div');
+    header.className = 'top-header';
+    header.innerHTML = `
+      <div class="top-header-title">Hotel Booking & Reservation</div>
+      <div class="top-header-right">
+        <div class="top-header-user">
+          <div class="top-header-avatar">U</div>
+          <span class="top-header-name">User</span>
+          <svg class="top-header-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="user-dropdown">
+            <div class="user-dropdown-header">
+              <div class="user-dropdown-avatar">U</div>
+              <div class="user-dropdown-info">
+                <span class="user-dropdown-name">User</span>
+                <span class="user-dropdown-email">user@hotel.com</span>
+              </div>
             </div>
+            <div class="user-dropdown-divider"></div>
+            <a href="${BASE}/profile" class="user-dropdown-item">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Profile
+            </a>
+            <a href="${BASE}/settings" class="user-dropdown-item">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Settings
+            </a>
+            <div class="user-dropdown-divider"></div>
+            <a href="#" class="user-dropdown-item user-dropdown-signout" onclick="event.preventDefault(); Auth.logout();">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6M10.5 11.5L14 8l-3.5-3.5M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Sign Out
+            </a>
           </div>
-          <div class="user-dropdown-divider"></div>
-          <a href="${BASE}/profile" class="user-dropdown-item">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            Profile
-          </a>
-          <a href="${BASE}/settings" class="user-dropdown-item">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            Settings
-          </a>
-          <div class="user-dropdown-divider"></div>
-          <a href="#" class="user-dropdown-item user-dropdown-signout" onclick="event.preventDefault(); Auth.logout();">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6M10.5 11.5L14 8l-3.5-3.5M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Sign Out
-          </a>
         </div>
       </div>
-    </div>
-  `;
+    `;
+    mainContent.insertBefore(header, mainContent.firstChild);
+  }
 
-  mainContent.insertBefore(header, mainContent.firstChild);
+  updateHeaderUserInfo();
 
-  // Toggle dropdown
-  const toggle = document.getElementById('userDropdownToggle');
-  const dropdown = document.getElementById('userDropdown');
+  if (window.__headerEventsBound) return;
+  window.__headerEventsBound = true;
 
-  toggle.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdown.classList.toggle('open');
-  });
-
-  // Close on outside click
   document.addEventListener('click', (e) => {
-    if (!toggle.contains(e.target)) {
-      dropdown.classList.remove('open');
-    }
-  });
+    const headerEl = document.querySelector('.top-header');
+    if (!headerEl) return;
 
-  // Prevent dropdown item clicks from closing prematurely
-  dropdown.addEventListener('click', (e) => {
-    e.stopPropagation();
+    const toggle = headerEl.querySelector('.top-header-user');
+    const dropdown = headerEl.querySelector('.user-dropdown');
+    if (!toggle || !dropdown) return;
+
+    if (toggle.contains(e.target)) {
+      dropdown.classList.toggle('open');
+      return;
+    }
+
+    dropdown.classList.remove('open');
   });
 }
 
@@ -320,9 +354,11 @@ function injectHeaderStyles() {
       height: 60px;
       background: #1e293b;
       color: #fff;
-      position: sticky;
+      position: fixed;
       top: 0;
-      z-index: 900;
+      left: 250px;
+      right: 0;
+      z-index: 1100;
       flex-shrink: 0;
     }
 
@@ -367,6 +403,13 @@ function injectHeaderStyles() {
       font-weight: 600;
       flex-shrink: 0;
       letter-spacing: 0.5px;
+      overflow: hidden;
+    }
+
+    .top-header-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .top-header-name {
@@ -423,6 +466,13 @@ function injectHeaderStyles() {
       font-weight: 600;
       flex-shrink: 0;
       letter-spacing: 0.5px;
+      overflow: hidden;
+    }
+
+    .user-dropdown-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .user-dropdown-info {
@@ -487,6 +537,7 @@ function injectHeaderStyles() {
     @media (max-width: 768px) {
       .top-header {
         padding: 0 16px;
+        left: 60px;
       }
 
       .top-header-name {
@@ -495,10 +546,6 @@ function injectHeaderStyles() {
 
       .top-header-title {
         font-size: 0.9rem;
-      }
-
-      .top-header-logout span {
-        display: none;
       }
 
       .user-dropdown {

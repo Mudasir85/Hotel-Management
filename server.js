@@ -9,7 +9,7 @@ const PORT = 3000;
 const JWT_SECRET = 'hotel-booking-secret-key-change-in-production';
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // Database setup
@@ -94,13 +94,15 @@ db.serialize(() => {
       full_name TEXT NOT NULL,
       email TEXT DEFAULT '',
       phone TEXT DEFAULT '',
+      avatar_url TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Add email and phone columns if they don't exist
+  // Add profile columns if they don't exist
   db.run(`ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''`, (err) => {});
   db.run(`ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''`, (err) => {});
+  db.run(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''`, (err) => {});
 
   // Seed a default admin user (password: admin123)
   const defaultPassword = bcrypt.hashSync('admin123', 10);
@@ -167,7 +169,7 @@ app.post('/api/auth/login', (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '' }
+      user: { id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '', avatar_url: user.avatar_url || '' }
     });
   });
 });
@@ -205,7 +207,7 @@ app.post('/api/auth/register', (req, res) => {
 
       res.status(201).json({
         token,
-        user: { id: this.lastID, username, full_name }
+        user: { id: this.lastID, username, full_name, email: '', phone: '', avatar_url: '' }
       });
     }
   );
@@ -213,11 +215,11 @@ app.post('/api/auth/register', (req, res) => {
 
 // GET /api/auth/me - Verify token & get user info
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  db.get('SELECT id, username, full_name, email, phone FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, username, full_name, email, phone, avatar_url FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) {
       return res.json({ user: req.user });
     }
-    res.json({ user: { id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '' } });
+    res.json({ user: { id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '', avatar_url: user.avatar_url || '' } });
   });
 });
 
@@ -225,20 +227,20 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 
 // GET /api/profile - Get user profile
 app.get('/api/profile', authenticateToken, (req, res) => {
-  db.get('SELECT id, username, full_name, email, phone, created_at FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, username, full_name, email, phone, avatar_url, created_at FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to fetch profile' });
     }
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '', created_at: user.created_at });
+    res.json({ id: user.id, username: user.username, full_name: user.full_name, email: user.email || '', phone: user.phone || '', avatar_url: user.avatar_url || '', created_at: user.created_at });
   });
 });
 
 // POST /api/profile - Update user profile
 app.post('/api/profile', authenticateToken, (req, res) => {
-  const { full_name, email, phone } = req.body;
+  const { full_name, email, phone, avatar_url } = req.body;
 
   if (!full_name || !full_name.trim()) {
     return res.status(400).json({ error: 'Full name is required' });
@@ -252,9 +254,17 @@ app.post('/api/profile', authenticateToken, (req, res) => {
     return res.status(400).json({ error: 'Phone must be exactly 10 digits' });
   }
 
+  if (avatar_url && (typeof avatar_url !== 'string' || !/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(avatar_url))) {
+    return res.status(400).json({ error: 'Invalid avatar image format' });
+  }
+
+  if (avatar_url && avatar_url.length > 2 * 1024 * 1024 * 1.5) {
+    return res.status(400).json({ error: 'Avatar image is too large' });
+  }
+
   db.run(
-    'UPDATE users SET full_name = ?, email = ?, phone = ? WHERE id = ?',
-    [full_name.trim(), email || '', phone || '', req.user.id],
+    'UPDATE users SET full_name = ?, email = ?, phone = ?, avatar_url = ? WHERE id = ?',
+    [full_name.trim(), email || '', phone || '', avatar_url || '', req.user.id],
     function (err) {
       if (err) {
         return res.status(500).json({ error: 'Failed to update profile' });
@@ -270,7 +280,7 @@ app.post('/api/profile', authenticateToken, (req, res) => {
       res.json({
         message: 'Profile updated successfully',
         token,
-        user: { id: req.user.id, username: req.user.username, full_name: full_name.trim(), email: email || '', phone: phone || '' }
+        user: { id: req.user.id, username: req.user.username, full_name: full_name.trim(), email: email || '', phone: phone || '', avatar_url: avatar_url || '' }
       });
     }
   );
@@ -580,5 +590,5 @@ app.get('/', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Hotel Booking System running at http://localhost:${PORT}`);
+  console.log('Hotel Booking System running at /sitesh');
 });
