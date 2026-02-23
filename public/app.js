@@ -72,6 +72,12 @@ function renderSidebar(activePage) {
         <a href="${BASE}/dashboard/staff" class="${activePage === 'staff' ? 'active' : ''}">
           <span class="nav-icon">&#128104;</span> Staff
         </a>
+        <a href="${BASE}/dashboard/menu" class="${activePage === 'menu' ? 'active' : ''}">
+          <span class="nav-icon">&#127828;</span> Menu
+        </a>
+        <a href="${BASE}/dashboard/orders" class="${activePage === 'orders' ? 'active' : ''}">
+          <span class="nav-icon">&#128722;</span> Orders
+        </a>
       </nav>
     </div>
   `;
@@ -712,6 +718,8 @@ function getActivePageFromPath(pathname) {
   const page = segments[1];
   if (page === 'bookings') return 'bookings';
   if (page === 'staff') return 'staff';
+  if (page === 'menu') return 'menu';
+  if (page === 'orders') return 'orders';
   if (page === 'rooms') return 'rooms';
   if (page === 'about') return 'about';
   if (page === 'gallery') return 'gallery';

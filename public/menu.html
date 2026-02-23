@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu Management - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .container {
+      flex: 1;
+      padding: 24px;
+    }
+
+    .menu-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .menu-title h1 {
+      font-size: 1.45rem;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+
+    .menu-title p {
+      font-size: 0.92rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .btn-add {
+      background: #1a73e8;
+      color: #fff;
+      padding: 10px 16px;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover {
+      background: #1557b0;
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .menu-card {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .menu-image {
+      width: 100%;
+      height: 170px;
+      object-fit: cover;
+      background: #dbeafe;
+    }
+
+    .menu-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .menu-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .menu-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1.3;
+    }
+
+    .menu-price {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f766e;
+      white-space: nowrap;
+    }
+
+    .menu-category {
+      align-self: flex-start;
+      font-size: 0.73rem;
+      font-weight: 700;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border: 1px solid #c7dafc;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .menu-description {
+      font-size: 0.84rem;
+      color: #4b5563;
+      line-height: 1.45;
+      margin-top: 2px;
+      flex: 1;
+    }
+
+    .menu-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 10px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .btn-edit {
+      background: #0d6efd;
+      color: #fff;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+    }
+
+    .btn-edit:hover {
+      background: #0a58ca;
+    }
+
+    .btn-delete {
+      background: #dc3545;
+      color: #fff;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+    }
+
+    .btn-delete:hover {
+      background: #b02a37;
+    }
+
+    .empty-state {
+      text-align: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 36px;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 560px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 32px rgba(0,0,0,0.2);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal h2 {
+      font-size: 1.15rem;
+      color: #1a73e8;
+      margin-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-group label {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .modal-actions {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .confirm-text {
+      color: #4b5563;
+      line-height: 1.45;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1400px) {
+      .menu-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 980px) {
+      .menu-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .menu-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .menu-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn-add {
+        width: 100%;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="menu-header">
+        <div class="menu-title">
+          <h1>Menu Management</h1>
+          <p id="menuCount">0 items in menu</p>
+        </div>
+        <button class="btn btn-add" onclick="openMenuModal()">+ Add Menu Item</button>
+      </div>
+
+      <div id="menuContainer" class="menu-grid"></div>
+    </div>
+  </div>
+
+  <div id="menuModal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="menuModalTitle">Add Menu Item</h2>
+      <form id="menuForm">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="menuName">Dish Name</label>
+            <input type="text" id="menuName" required placeholder="Enter dish name">
+          </div>
+
+          <div class="form-group">
+            <label for="menuCategory">Category</label>
+            <select id="menuCategory" required>
+              <option value="">Select category</option>
+              <option value="Breakfast">Breakfast</option>
+              <option value="Lunch">Lunch</option>
+              <option value="Dinner">Dinner</option>
+              <option value="Starters">Starters</option>
+              <option value="Main Course">Main Course</option>
+              <option value="Desserts">Desserts</option>
+              <option value="Beverages">Beverages</option>
+              <option value="Snacks">Snacks</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="menuPrice">Price (₹)</label>
+            <input type="number" id="menuPrice" min="1" step="1" required placeholder="e.g. 320">
+          </div>
+
+          <div class="form-group full">
+            <label for="menuImage">Image URL</label>
+            <input type="text" id="menuImage" placeholder="/sitesh/uploads/menu/placeholder-food.svg">
+          </div>
+
+          <div class="form-group full">
+            <label for="menuDescription">Description</label>
+            <textarea id="menuDescription" required placeholder="Describe the dish in 1-2 lines"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeMenuModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="menuSaveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal" style="max-width: 420px;">
+      <h2>Delete Menu Item</h2>
+      <p class="confirm-text" id="deleteConfirmText"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-delete" onclick="confirmDeleteMenuItem()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('menu')) throw new Error('Not authenticated');
+
+    const MENU_API = BASE + '/api/menu-items';
+    const menuContainer = document.getElementById('menuContainer');
+    const menuCountEl = document.getElementById('menuCount');
+    const menuModal = document.getElementById('menuModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const menuForm = document.getElementById('menuForm');
+
+    let menuItems = [];
+    let editingMenuId = null;
+    let pendingDeleteId = null;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function updateMenuCount() {
+      menuCountEl.textContent = `${menuItems.length} items in menu`;
+    }
+
+    function renderMenuCards() {
+      if (!menuItems.length) {
+        menuContainer.className = '';
+        menuContainer.innerHTML = '<div class="empty-state">No menu items found.</div>';
+        updateMenuCount();
+        return;
+      }
+
+      menuContainer.className = 'menu-grid';
+      menuContainer.innerHTML = menuItems.map((item) => {
+        const safeName = escapeHtml(item.name);
+        const safeCategory = escapeHtml(item.category);
+        const safeDescription = escapeHtml(item.description);
+        const safeImage = escapeHtml(item.image || '/sitesh/uploads/menu/placeholder-food.svg');
+        const price = Number(item.price || 0).toFixed(0);
+
+        return `
+          <div class="menu-card">
+            <img class="menu-image" src="${safeImage}" alt="${safeName}" loading="lazy" onerror="this.src='/sitesh/uploads/menu/placeholder-food.svg'">
+            <div class="menu-body">
+              <div class="menu-top">
+                <div class="menu-name">${safeName}</div>
+                <div class="menu-price">₹${price}</div>
+              </div>
+              <div class="menu-category">${safeCategory}</div>
+              <div class="menu-description">${safeDescription}</div>
+              <div class="menu-actions">
+                <button class="btn btn-edit" onclick="openMenuModal(${item.id})">Edit</button>
+                <button class="btn btn-delete" onclick="openDeleteModal(${item.id})">Delete</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateMenuCount();
+    }
+
+    async function loadMenuItems() {
+      try {
+        const response = await fetch(MENU_API, { headers: Auth.headers() });
+
+        if (response.status === 401 || response.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!response.ok) {
+          menuContainer.className = '';
+          menuContainer.innerHTML = '<div class="empty-state">Failed to load menu items.</div>';
+          return;
+        }
+
+        menuItems = await response.json();
+        renderMenuCards();
+      } catch {
+        menuContainer.className = '';
+        menuContainer.innerHTML = '<div class="empty-state">Failed to load menu items.</div>';
+      }
+    }
+
+    function resetMenuForm() {
+      menuForm.reset();
+      editingMenuId = null;
+      document.getElementById('menuModalTitle').textContent = 'Add Menu Item';
+      document.getElementById('menuSaveBtn').textContent = 'Save';
+      document.getElementById('menuImage').value = '/sitesh/uploads/menu/placeholder-food.svg';
+    }
+
+    function openMenuModal(menuId = null) {
+      resetMenuForm();
+
+      if (menuId) {
+        const menuItem = menuItems.find((item) => item.id === menuId);
+        if (!menuItem) {
+          showToast('Menu item not found', 'error');
+          return;
+        }
+
+        editingMenuId = menuItem.id;
+        document.getElementById('menuModalTitle').textContent = 'Edit Menu Item';
+        document.getElementById('menuSaveBtn').textContent = 'Update';
+        document.getElementById('menuName').value = menuItem.name;
+        document.getElementById('menuCategory').value = menuItem.category;
+        document.getElementById('menuPrice').value = Number(menuItem.price || 0).toFixed(0);
+        document.getElementById('menuImage').value = menuItem.image || '/sitesh/uploads/menu/placeholder-food.svg';
+        document.getElementById('menuDescription').value = menuItem.description;
+      }
+
+      menuModal.classList.add('open');
+    }
+
+    function closeMenuModal() {
+      menuModal.classList.remove('open');
+      resetMenuForm();
+    }
+
+    function openDeleteModal(menuId) {
+      const menuItem = menuItems.find((item) => item.id === menuId);
+      if (!menuItem) {
+        showToast('Menu item not found', 'error');
+        return;
+      }
+
+      pendingDeleteId = menuId;
+      document.getElementById('deleteConfirmText').textContent =
+        `Are you sure you want to delete ${menuItem.name}?`;
+      deleteModal.classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      deleteModal.classList.remove('open');
+    }
+
+    menuModal.addEventListener('click', (event) => {
+      if (event.target === menuModal) {
+        closeMenuModal();
+      }
+    });
+
+    deleteModal.addEventListener('click', (event) => {
+      if (event.target === deleteModal) {
+        closeDeleteModal();
+      }
+    });
+
+    menuForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        name: document.getElementById('menuName').value.trim(),
+        category: document.getElementById('menuCategory').value,
+        price: Number(document.getElementById('menuPrice').value),
+        image: document.getElementById('menuImage').value.trim() || '/sitesh/uploads/menu/placeholder-food.svg',
+        description: document.getElementById('menuDescription').value.trim()
+      };
+
+      const isEdit = !!editingMenuId;
+      const url = isEdit ? `${MENU_API}/${editingMenuId}` : MENU_API;
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: Auth.headers(),
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.status === 401 || response.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!response.ok) {
+          showToast(result.error || 'Operation failed', 'error');
+          return;
+        }
+
+        closeMenuModal();
+        showToast(isEdit ? 'Menu item updated successfully' : 'Menu item added successfully', 'success');
+        loadMenuItems();
+      } catch {
+        showToast('Failed to save menu item', 'error');
+      }
+    });
+
+    async function confirmDeleteMenuItem() {
+      if (!pendingDeleteId) return;
+
+      try {
+        const response = await fetch(`${MENU_API}/${pendingDeleteId}`, {
+          method: 'DELETE',
+          headers: Auth.headers()
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          Auth.logout();
+          return;
+        }
+
+        if (!response.ok) {
+          const result = await response.json();
+          showToast(result.error || 'Failed to delete menu item', 'error');
+          return;
+        }
+
+        closeDeleteModal();
+        showToast('Menu item deleted successfully', 'success');
+        loadMenuItems();
+      } catch {
+        showToast('Failed to delete menu item', 'error');
+      }
+    }
+
+    window.openMenuModal = openMenuModal;
+    window.closeMenuModal = closeMenuModal;
+    window.openDeleteModal = openDeleteModal;
+    window.closeDeleteModal = closeDeleteModal;
+    window.confirmDeleteMenuItem = confirmDeleteMenuItem;
+
+    loadMenuItems();
+  </script>
+</body>
+</html>

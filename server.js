@@ -135,6 +135,38 @@ db.serialize(() => {
   db.run(`ALTER TABLE staff ADD COLUMN duty_status INTEGER NOT NULL DEFAULT 1`, (err) => {});
   db.run(`ALTER TABLE staff ADD COLUMN avatar_icon TEXT NOT NULL DEFAULT 'user'`, (err) => {});
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS menu_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      price REAL NOT NULL,
+      image TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT ''
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_number TEXT NOT NULL,
+      order_date TEXT NOT NULL,
+      total_price REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Pending'
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS order_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      menu_item_id INTEGER NOT NULL,
+      quantity INTEGER NOT NULL
+    )
+  `);
+
+  seedDefaultMenuItems();
+
   // Seed a default admin user (password: admin123)
   const defaultPassword = bcrypt.hashSync('admin123', 10);
   db.run(
@@ -156,6 +188,17 @@ const ROOM_CAPACITY = {
 const TOTAL_ROOMS = 6;
 const STAFF_ROLES = new Set(['Manager', 'Chef', 'Waiter', 'Cashier', 'Helper', 'Receptionist']);
 const STAFF_SHIFTS = new Set(['Morning', 'Evening', 'Full Day']);
+const MENU_CATEGORIES = new Set([
+  'Breakfast',
+  'Lunch',
+  'Dinner',
+  'Starters',
+  'Main Course',
+  'Desserts',
+  'Beverages',
+  'Snacks'
+]);
+const ORDER_STATUSES = new Set(['Pending', 'Preparing', 'Delivered']);
 const STAFF_ROLE_ICONS = {
   Manager: '\u{1F464}',
   Chef: '\u{1F373}',
@@ -164,6 +207,49 @@ const STAFF_ROLE_ICONS = {
   Helper: '\u{1F6E0}',
   Receptionist: '\u{1F481}'
 };
+const DEFAULT_MENU_IMAGE = '/sitesh/uploads/menu/placeholder-food.svg';
+const DEFAULT_MENU_ITEMS = [
+  { name: 'Masala Omelette', category: 'Breakfast', price: 220, description: 'Fluffy eggs with onions, tomatoes, and green chilli.' },
+  { name: 'Aloo Paratha', category: 'Breakfast', price: 240, description: 'Whole wheat paratha with spiced potato filling and curd.' },
+  { name: 'Idli Sambar', category: 'Breakfast', price: 210, description: 'Soft idlis served with hot sambar and coconut chutney.' },
+  { name: 'Poha with Peanuts', category: 'Breakfast', price: 200, description: 'Flattened rice tossed with curry leaves, peanuts, and lemon.' },
+  { name: 'Paneer Sandwich', category: 'Breakfast', price: 260, description: 'Grilled sandwich loaded with paneer tikka filling.' },
+  { name: 'Veg Hakka Noodles', category: 'Lunch', price: 320, description: 'Wok tossed noodles with crunchy vegetables.' },
+  { name: 'Dal Tadka Rice Bowl', category: 'Lunch', price: 300, description: 'Yellow dal tadka with steamed basmati rice.' },
+  { name: 'Jeera Rice with Rajma', category: 'Lunch', price: 310, description: 'Comforting rajma curry served with cumin rice.' },
+  { name: 'Chicken Biryani', category: 'Lunch', price: 520, description: 'Hyderabadi style dum biryani with raita.' },
+  { name: 'Paneer Butter Masala', category: 'Lunch', price: 420, description: 'Creamy tomato gravy with soft paneer cubes.' },
+  { name: 'Tandoori Chicken Platter', category: 'Dinner', price: 640, description: 'Smoky tandoori chicken with mint chutney and salad.' },
+  { name: 'Mutton Rogan Josh', category: 'Dinner', price: 760, description: 'Slow cooked Kashmiri style mutton curry.' },
+  { name: 'Kadai Paneer', category: 'Dinner', price: 460, description: 'Paneer tossed with bell peppers in spicy kadai masala.' },
+  { name: 'Butter Naan Basket', category: 'Dinner', price: 260, description: 'Assorted butter naans served warm from the tandoor.' },
+  { name: 'Fish Curry with Rice', category: 'Dinner', price: 700, description: 'Coastal fish curry paired with steamed rice.' },
+  { name: 'Crispy Corn Chaat', category: 'Starters', price: 260, description: 'Fried corn tossed with onion, capsicum, and tangy spices.' },
+  { name: 'Paneer Tikka', category: 'Starters', price: 380, description: 'Chargrilled paneer cubes marinated in yogurt and spices.' },
+  { name: 'Chicken Seekh Kebab', category: 'Starters', price: 440, description: 'Juicy minced chicken kebabs grilled to perfection.' },
+  { name: 'Veg Spring Rolls', category: 'Starters', price: 290, description: 'Crispy rolls stuffed with seasoned vegetables.' },
+  { name: 'Tandoori Mushroom', category: 'Starters', price: 320, description: 'Mushrooms grilled with smoky tandoori marinade.' },
+  { name: 'Dal Makhani', category: 'Main Course', price: 420, description: 'Slow-cooked black lentils with butter and cream.' },
+  { name: 'Chicken Curry', category: 'Main Course', price: 560, description: 'Home-style chicken curry with aromatic spices.' },
+  { name: 'Veg Kofta Curry', category: 'Main Course', price: 430, description: 'Soft vegetable koftas in rich cashew gravy.' },
+  { name: 'Prawn Masala', category: 'Main Course', price: 780, description: 'Spicy prawn masala simmered in onion tomato sauce.' },
+  { name: 'Palak Paneer', category: 'Main Course', price: 450, description: 'Paneer cubes cooked in smooth spinach gravy.' },
+  { name: 'Gulab Jamun', category: 'Desserts', price: 220, description: 'Soft khoya dumplings soaked in saffron sugar syrup.' },
+  { name: 'Rasmalai', category: 'Desserts', price: 240, description: 'Chenna patties served in chilled cardamom milk.' },
+  { name: 'Gajar Halwa', category: 'Desserts', price: 230, description: 'Slow-cooked carrot halwa with nuts and ghee.' },
+  { name: 'Kulfi Falooda', category: 'Desserts', price: 260, description: 'Traditional kulfi with rose falooda and basil seeds.' },
+  { name: 'Chocolate Brownie', category: 'Desserts', price: 280, description: 'Warm brownie served with chocolate drizzle.' },
+  { name: 'Masala Chai', category: 'Beverages', price: 200, description: 'Strong milk tea infused with cardamom and ginger.' },
+  { name: 'Cold Coffee', category: 'Beverages', price: 260, description: 'Chilled creamy coffee topped with cocoa.' },
+  { name: 'Fresh Lime Soda', category: 'Beverages', price: 210, description: 'Refreshing sweet-salty lime soda.' },
+  { name: 'Mango Lassi', category: 'Beverages', price: 240, description: 'Thick yogurt drink blended with ripe mango pulp.' },
+  { name: 'Tender Coconut Water', category: 'Beverages', price: 220, description: 'Freshly served natural coconut water.' },
+  { name: 'Samosa Platter', category: 'Snacks', price: 220, description: 'Crispy samosas served with tamarind and mint chutney.' },
+  { name: 'Pav Bhaji', category: 'Snacks', price: 300, description: 'Mumbai-style bhaji served with buttered pav.' },
+  { name: 'Vada Pav', category: 'Snacks', price: 210, description: 'Spiced potato fritter bun with garlic chutney.' },
+  { name: 'Cheese Corn Toast', category: 'Snacks', price: 260, description: 'Buttery toast topped with cheese and corn masala.' },
+  { name: 'Onion Pakoda', category: 'Snacks', price: 230, description: 'Crunchy onion fritters with green chutney.' }
+];
 
 // ─── Auth Middleware ───────────────────────────────────────────────
 function setAuthCookie(res, token) {
@@ -301,6 +387,198 @@ function validateStaffPayload(payload) {
   }
 
   return '';
+}
+
+function seedDefaultMenuItems() {
+  db.get('SELECT COUNT(*) AS count FROM menu_items', [], (countErr, countRow) => {
+    if (countErr) {
+      console.error('Failed to inspect menu_items table:', countErr.message);
+      return;
+    }
+
+    if ((countRow && countRow.count) >= 30) {
+      return;
+    }
+
+    const statement = db.prepare(
+      `INSERT INTO menu_items (name, category, price, image, description) VALUES (?, ?, ?, ?, ?)`
+    );
+
+    DEFAULT_MENU_ITEMS.forEach((item) => {
+      statement.run(
+        [item.name, item.category, Number(item.price), DEFAULT_MENU_IMAGE, item.description],
+        (insertErr) => {
+          if (insertErr) {
+            console.error('Failed to seed menu item:', insertErr.message);
+          }
+        }
+      );
+    });
+
+    statement.finalize();
+  });
+}
+
+function parseMenuItemPayload(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const category = typeof body.category === 'string' ? body.category.trim() : '';
+  const description = typeof body.description === 'string' ? body.description.trim() : '';
+  const image = typeof body.image === 'string' ? body.image.trim() : '';
+  const price = Number(body.price);
+  return { name, category, description, image, price };
+}
+
+function validateMenuItemPayload(payload) {
+  if (!payload.name || !payload.category || !payload.description) {
+    return 'Name, category, and description are required';
+  }
+
+  if (!MENU_CATEGORIES.has(payload.category)) {
+    return 'Invalid category selected';
+  }
+
+  if (!Number.isFinite(payload.price) || payload.price <= 0) {
+    return 'Price must be a valid number';
+  }
+
+  if (payload.image && !payload.image.startsWith('/')) {
+    return 'Image must be a relative URL starting with /';
+  }
+
+  return '';
+}
+
+function parseOrderPayload(body) {
+  const room_number = typeof body.room_number === 'string' ? body.room_number.trim() : '';
+  const status = typeof body.status === 'string' ? body.status.trim() : '';
+  const order_date = typeof body.order_date === 'string' && body.order_date.trim()
+    ? body.order_date.trim()
+    : new Date().toISOString();
+  const rawItems = Array.isArray(body.items) ? body.items : [];
+  const items = rawItems.map((item) => ({
+    menu_item_id: Number(item && item.menu_item_id),
+    quantity: Number(item && item.quantity)
+  }));
+  return { room_number, status, order_date, items };
+}
+
+function validateOrderPayload(payload) {
+  if (!payload.room_number || !payload.status || !payload.order_date) {
+    return 'Room number, status, and order date are required';
+  }
+
+  if (!ROOM_CAPACITY[payload.room_number]) {
+    return 'Invalid room number';
+  }
+
+  if (!ORDER_STATUSES.has(payload.status)) {
+    return 'Invalid order status';
+  }
+
+  if (!Array.isArray(payload.items) || payload.items.length === 0) {
+    return 'At least one menu item is required';
+  }
+
+  for (const item of payload.items) {
+    if (!Number.isInteger(item.menu_item_id) || item.menu_item_id <= 0) {
+      return 'Invalid menu item selected';
+    }
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      return 'Item quantity must be at least 1';
+    }
+  }
+
+  return '';
+}
+
+function withOrderItems(whereClause, params, callback) {
+  const query = `
+    SELECT
+      o.id,
+      o.room_number,
+      o.order_date,
+      o.total_price,
+      o.status,
+      oi.id AS order_item_id,
+      oi.menu_item_id,
+      oi.quantity,
+      m.name AS menu_item_name,
+      m.price AS menu_item_price
+    FROM orders o
+    LEFT JOIN order_items oi ON oi.order_id = o.id
+    LEFT JOIN menu_items m ON m.id = oi.menu_item_id
+    ${whereClause}
+    ORDER BY o.order_date DESC, o.id DESC, oi.id ASC
+  `;
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    const grouped = new Map();
+    rows.forEach((row) => {
+      if (!grouped.has(row.id)) {
+        grouped.set(row.id, {
+          id: row.id,
+          room_number: row.room_number,
+          order_date: row.order_date,
+          total_price: Number(row.total_price),
+          status: row.status,
+          items: []
+        });
+      }
+
+      if (row.order_item_id) {
+        grouped.get(row.id).items.push({
+          id: row.order_item_id,
+          menu_item_id: row.menu_item_id,
+          name: row.menu_item_name || '',
+          price: Number(row.menu_item_price || 0),
+          quantity: row.quantity
+        });
+      }
+    });
+
+    callback(null, Array.from(grouped.values()));
+  });
+}
+
+function buildOrderTotal(items, callback) {
+  const uniqueIds = [...new Set(items.map((item) => item.menu_item_id))];
+  const placeholders = uniqueIds.map(() => '?').join(',');
+
+  db.all(
+    `SELECT id, name, price FROM menu_items WHERE id IN (${placeholders})`,
+    uniqueIds,
+    (err, rows) => {
+      if (err) {
+        callback(err);
+        return;
+      }
+
+      const menuMap = new Map(rows.map((row) => [row.id, row]));
+      if (menuMap.size !== uniqueIds.length) {
+        callback(new Error('One or more selected menu items no longer exist'));
+        return;
+      }
+
+      const normalizedItems = items.map((item) => {
+        const menuItem = menuMap.get(item.menu_item_id);
+        return {
+          menu_item_id: item.menu_item_id,
+          quantity: item.quantity,
+          name: menuItem.name,
+          unit_price: Number(menuItem.price),
+          line_total: Number(menuItem.price) * item.quantity
+        };
+      });
+
+      const total = normalizedItems.reduce((sum, item) => sum + item.line_total, 0);
+      callback(null, { total, items: normalizedItems });
+    }
+  );
 }
 
 function parseMultipartFormData(buffer, boundary) {
@@ -1011,6 +1289,346 @@ app.delete('/api/staff/:id', authenticateToken, (req, res) => {
   });
 });
 
+// ─── Menu Item Routes (Protected) ───────────────────────────────
+
+// GET /api/menu-items - List all menu items
+app.get('/api/menu-items', authenticateToken, (req, res) => {
+  db.all(`
+    SELECT id, name, category, price, image, description
+    FROM menu_items
+    ORDER BY category ASC, name COLLATE NOCASE ASC
+  `, [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch menu items' });
+    }
+    const normalized = rows.map((row) => ({
+      ...row,
+      price: Number(row.price)
+    }));
+    res.json(normalized);
+  });
+});
+
+// GET /api/menu-items/:id - Get one menu item
+app.get('/api/menu-items/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.get(`
+    SELECT id, name, category, price, image, description
+    FROM menu_items
+    WHERE id = ?
+  `, [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch menu item' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'Menu item not found' });
+    }
+    res.json({
+      ...row,
+      price: Number(row.price)
+    });
+  });
+});
+
+// POST /api/menu-items - Create menu item
+app.post('/api/menu-items', authenticateToken, (req, res) => {
+  const payload = parseMenuItemPayload(req.body || {});
+  const validationError = validateMenuItemPayload(payload);
+
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  db.run(
+    `INSERT INTO menu_items (name, category, price, image, description) VALUES (?, ?, ?, ?, ?)`,
+    [payload.name, payload.category, payload.price, payload.image || DEFAULT_MENU_IMAGE, payload.description],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create menu item' });
+      }
+      res.status(201).json({
+        id: this.lastID,
+        ...payload,
+        image: payload.image || DEFAULT_MENU_IMAGE
+      });
+    }
+  );
+});
+
+// PUT /api/menu-items/:id - Update menu item
+app.put('/api/menu-items/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parseMenuItemPayload(req.body || {});
+  const validationError = validateMenuItemPayload(payload);
+
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  db.run(
+    `UPDATE menu_items SET name = ?, category = ?, price = ?, image = ?, description = ? WHERE id = ?`,
+    [payload.name, payload.category, payload.price, payload.image || DEFAULT_MENU_IMAGE, payload.description, id],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update menu item' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Menu item not found' });
+      }
+
+      db.get(
+        `SELECT id, name, category, price, image, description FROM menu_items WHERE id = ?`,
+        [id],
+        (selectErr, row) => {
+          if (selectErr || !row) {
+            return res.status(500).json({ error: 'Failed to fetch updated menu item' });
+          }
+          res.json({
+            ...row,
+            price: Number(row.price)
+          });
+        }
+      );
+    }
+  );
+});
+
+// DELETE /api/menu-items/:id - Delete menu item
+app.delete('/api/menu-items/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.get('SELECT id FROM order_items WHERE menu_item_id = ? LIMIT 1', [id], (checkErr, inUseRow) => {
+    if (checkErr) {
+      return res.status(500).json({ error: 'Failed to validate menu item deletion' });
+    }
+    if (inUseRow) {
+      return res.status(409).json({ error: 'Cannot delete menu item that is used in existing orders' });
+    }
+
+    db.run('DELETE FROM menu_items WHERE id = ?', [id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to delete menu item' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Menu item not found' });
+      }
+      res.json({ message: 'Menu item deleted' });
+    });
+  });
+});
+
+// ─── Order Routes (Protected) ───────────────────────────────────
+
+// GET /api/orders - List all orders with items
+app.get('/api/orders', authenticateToken, (req, res) => {
+  withOrderItems('', [], (err, orders) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+    res.json(orders);
+  });
+});
+
+// GET /api/orders/:id - Get one order with items
+app.get('/api/orders/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  withOrderItems('WHERE o.id = ?', [id], (err, orders) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch order' });
+    }
+    if (!orders.length) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.json(orders[0]);
+  });
+});
+
+// POST /api/orders - Create order
+app.post('/api/orders', authenticateToken, (req, res) => {
+  const payload = parseOrderPayload(req.body || {});
+  const validationError = validateOrderPayload(payload);
+
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  buildOrderTotal(payload.items, (totalErr, computed) => {
+    if (totalErr) {
+      return res.status(400).json({ error: totalErr.message || 'Failed to compute order total' });
+    }
+
+    db.run('BEGIN TRANSACTION', (beginErr) => {
+      if (beginErr) {
+        return res.status(500).json({ error: 'Failed to create order' });
+      }
+
+      db.run(
+        `INSERT INTO orders (room_number, order_date, total_price, status) VALUES (?, ?, ?, ?)`,
+        [payload.room_number, payload.order_date, computed.total, payload.status],
+        function (insertErr) {
+          if (insertErr) {
+            db.run('ROLLBACK');
+            return res.status(500).json({ error: 'Failed to create order' });
+          }
+
+          const orderId = this.lastID;
+          const statement = db.prepare(
+            `INSERT INTO order_items (order_id, menu_item_id, quantity) VALUES (?, ?, ?)`
+          );
+
+          let hasFailure = false;
+          computed.items.forEach((item) => {
+            statement.run([orderId, item.menu_item_id, item.quantity], (itemErr) => {
+              if (itemErr) {
+                hasFailure = true;
+              }
+            });
+          });
+
+          statement.finalize((finalizeErr) => {
+            if (hasFailure || finalizeErr) {
+              db.run('ROLLBACK');
+              return res.status(500).json({ error: 'Failed to save order items' });
+            }
+
+            db.run('COMMIT', (commitErr) => {
+              if (commitErr) {
+                db.run('ROLLBACK');
+                return res.status(500).json({ error: 'Failed to finalize order' });
+              }
+
+              withOrderItems('WHERE o.id = ?', [orderId], (loadErr, orders) => {
+                if (loadErr || !orders.length) {
+                  return res.status(500).json({ error: 'Order created but failed to fetch result' });
+                }
+                res.status(201).json(orders[0]);
+              });
+            });
+          });
+        }
+      );
+    });
+  });
+});
+
+// PUT /api/orders/:id - Update order
+app.put('/api/orders/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parseOrderPayload(req.body || {});
+  const validationError = validateOrderPayload(payload);
+
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  buildOrderTotal(payload.items, (totalErr, computed) => {
+    if (totalErr) {
+      return res.status(400).json({ error: totalErr.message || 'Failed to compute order total' });
+    }
+
+    db.run('BEGIN TRANSACTION', (beginErr) => {
+      if (beginErr) {
+        return res.status(500).json({ error: 'Failed to update order' });
+      }
+
+      db.run(
+        `UPDATE orders SET room_number = ?, order_date = ?, total_price = ?, status = ? WHERE id = ?`,
+        [payload.room_number, payload.order_date, computed.total, payload.status, id],
+        function (updateErr) {
+          if (updateErr) {
+            db.run('ROLLBACK');
+            return res.status(500).json({ error: 'Failed to update order' });
+          }
+          if (this.changes === 0) {
+            db.run('ROLLBACK');
+            return res.status(404).json({ error: 'Order not found' });
+          }
+
+          db.run(`DELETE FROM order_items WHERE order_id = ?`, [id], (deleteErr) => {
+            if (deleteErr) {
+              db.run('ROLLBACK');
+              return res.status(500).json({ error: 'Failed to update order items' });
+            }
+
+            const statement = db.prepare(
+              `INSERT INTO order_items (order_id, menu_item_id, quantity) VALUES (?, ?, ?)`
+            );
+
+            let hasFailure = false;
+            computed.items.forEach((item) => {
+              statement.run([id, item.menu_item_id, item.quantity], (itemErr) => {
+                if (itemErr) {
+                  hasFailure = true;
+                }
+              });
+            });
+
+            statement.finalize((finalizeErr) => {
+              if (hasFailure || finalizeErr) {
+                db.run('ROLLBACK');
+                return res.status(500).json({ error: 'Failed to save updated order items' });
+              }
+
+              db.run('COMMIT', (commitErr) => {
+                if (commitErr) {
+                  db.run('ROLLBACK');
+                  return res.status(500).json({ error: 'Failed to finalize order update' });
+                }
+
+                withOrderItems('WHERE o.id = ?', [id], (loadErr, orders) => {
+                  if (loadErr || !orders.length) {
+                    return res.status(500).json({ error: 'Order updated but failed to fetch result' });
+                  }
+                  res.json(orders[0]);
+                });
+              });
+            });
+          });
+        }
+      );
+    });
+  });
+});
+
+// DELETE /api/orders/:id - Delete order
+app.delete('/api/orders/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.run('BEGIN TRANSACTION', (beginErr) => {
+    if (beginErr) {
+      return res.status(500).json({ error: 'Failed to delete order' });
+    }
+
+    db.run(`DELETE FROM order_items WHERE order_id = ?`, [id], (itemErr) => {
+      if (itemErr) {
+        db.run('ROLLBACK');
+        return res.status(500).json({ error: 'Failed to delete order items' });
+      }
+
+      db.run(`DELETE FROM orders WHERE id = ?`, [id], function (orderErr) {
+        if (orderErr) {
+          db.run('ROLLBACK');
+          return res.status(500).json({ error: 'Failed to delete order' });
+        }
+        if (this.changes === 0) {
+          db.run('ROLLBACK');
+          return res.status(404).json({ error: 'Order not found' });
+        }
+
+        db.run('COMMIT', (commitErr) => {
+          if (commitErr) {
+            db.run('ROLLBACK');
+            return res.status(500).json({ error: 'Failed to finalize order deletion' });
+          }
+          res.json({ message: 'Order deleted' });
+        });
+      });
+    });
+  });
+});
+
 // ─── Page Routes ─────────────────────────────────────────────────
 
 // Auth route
@@ -1032,6 +1650,8 @@ const dashboardPageRoutes = [
   { suffix: 'rooms', page: 'dashboard-rooms.html' },
   { suffix: 'bookings', page: 'bookings.html' },
   { suffix: 'staff', page: 'staff.html' },
+  { suffix: 'menu', page: 'menu.html' },
+  { suffix: 'orders', page: 'orders.html' },
   { suffix: 'profile', page: 'profile.html' },
   { suffix: 'settings', page: 'settings.html' }
 ];
