@@ -945,7 +945,7 @@ app.delete('/api/staff/:id', authenticateToken, (req, res) => {
 
 // ─── Page Routes ─────────────────────────────────────────────────
 
-// Public routes
+// Auth route
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -967,24 +967,50 @@ app.get('/bookings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'bookings.html'));
 });
 
-app.get('/rooms', (req, res) => {
+// Public routes (canonical under /public)
+app.get('/public', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/public/rooms', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'rooms.html'));
 });
 
-app.get('/about', (req, res) => {
+app.get('/public/about', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'about.html'));
 });
 
-app.get('/gallery', (req, res) => {
+app.get('/public/gallery', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
 });
 
-app.get('/blogs', (req, res) => {
+app.get('/public/blogs', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'blogs.html'));
 });
 
-app.get('/contact', (req, res) => {
+app.get('/public/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
+});
+
+// Backward-compatible redirects from old public URLs
+app.get('/rooms', (req, res) => {
+  res.redirect('/sitesh/public/rooms');
+});
+
+app.get('/about', (req, res) => {
+  res.redirect('/sitesh/public/about');
+});
+
+app.get('/gallery', (req, res) => {
+  res.redirect('/sitesh/public/gallery');
+});
+
+app.get('/blogs', (req, res) => {
+  res.redirect('/sitesh/public/blogs');
+});
+
+app.get('/contact', (req, res) => {
+  res.redirect('/sitesh/public/contact');
 });
 
 app.get('/profile', (req, res) => {
@@ -999,9 +1025,9 @@ app.get('/bookings/:id', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'booking-detail.html'));
 });
 
-// Public landing page
+// Default route
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.redirect('/sitesh/public');
 });
 
 // Start server
