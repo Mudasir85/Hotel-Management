@@ -1,5 +1,4 @@
 const BASE = '/sitesh';
-const PROTECTED_ROUTES = new Set(['dashboard', 'bookings', 'staff', 'profile', 'settings']);
 
 // ─── Auth Utilities ───────────────────────────────────────────────
 const Auth = {
@@ -43,6 +42,7 @@ const Auth = {
   },
 
   logout() {
+    fetch(BASE + '/api/auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
     this.clear();
     window.location.href = BASE + '/login';
   }
@@ -63,25 +63,25 @@ function renderSidebar(activePage) {
         <a href="${BASE}/dashboard" class="${activePage === 'dashboard' ? 'active' : ''}">
           <span class="nav-icon">&#9632;</span> Dashboard
         </a>
-        <a href="${BASE}/rooms" class="${activePage === 'rooms' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/rooms" class="${activePage === 'rooms' ? 'active' : ''}">
           <span class="nav-icon">&#127968;</span> Our Rooms
         </a>
-        <a href="${BASE}/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
           <span class="nav-icon">&#128203;</span> Bookings
         </a>
-        <a href="${BASE}/staff" class="${activePage === 'staff' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/staff" class="${activePage === 'staff' ? 'active' : ''}">
           <span class="nav-icon">&#128104;</span> Staff
         </a>
-        <a href="${BASE}/about" class="${activePage === 'about' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/about" class="${activePage === 'about' ? 'active' : ''}">
           <span class="nav-icon">&#8505;</span> About Us
         </a>
-        <a href="${BASE}/gallery" class="${activePage === 'gallery' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/gallery" class="${activePage === 'gallery' ? 'active' : ''}">
           <span class="nav-icon">&#128247;</span> Gallery
         </a>
-        <a href="${BASE}/blogs" class="${activePage === 'blogs' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/blogs" class="${activePage === 'blogs' ? 'active' : ''}">
           <span class="nav-icon">&#128240;</span> Blogs
         </a>
-        <a href="${BASE}/contact" class="${activePage === 'contact' ? 'active' : ''}">
+        <a href="${BASE}/dashboard/contact" class="${activePage === 'contact' ? 'active' : ''}">
           <span class="nav-icon">&#9993;</span> Contact
         </a>
       </nav>
@@ -304,11 +304,11 @@ function renderHeader() {
               </div>
             </div>
             <div class="user-dropdown-divider"></div>
-            <a href="${BASE}/profile" class="user-dropdown-item">
+            <a href="${BASE}/dashboard/profile" class="user-dropdown-item">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
               Profile
             </a>
-            <a href="${BASE}/settings" class="user-dropdown-item">
+            <a href="${BASE}/dashboard/settings" class="user-dropdown-item">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
               Settings
             </a>
@@ -711,20 +711,27 @@ function showToast(message, type = 'info', duration = 3000) {
 
 // ─── Lightweight SPA Navigation ─────────────────────────────────
 function isAppRoute(pathname) {
-  if (!pathname.startsWith(BASE + '/')) return false;
-  const afterBase = pathname.slice(BASE.length);
-  const firstSegment = afterBase.split('/').filter(Boolean)[0];
-  return !!firstSegment && PROTECTED_ROUTES.has(firstSegment);
+  if (pathname === BASE + '/dashboard') return true;
+  return pathname.startsWith(BASE + '/dashboard/');
 }
 
 function getActivePageFromPath(pathname) {
   const afterBase = pathname.slice(BASE.length);
   const segments = afterBase.split('/').filter(Boolean);
-  if (segments.length === 0) return 'dashboard';
-  if (segments[0] === 'staff') return 'staff';
-  if (segments[0] === 'dashboard' && segments[1] === 'staff') return 'staff';
-  if (segments[0] === 'dashboard') return 'dashboard';
-  return segments[0];
+  if (segments[0] !== 'dashboard') return 'dashboard';
+  if (segments.length === 1) return 'dashboard';
+
+  const page = segments[1];
+  if (page === 'bookings') return 'bookings';
+  if (page === 'staff') return 'staff';
+  if (page === 'rooms') return 'rooms';
+  if (page === 'about') return 'about';
+  if (page === 'gallery') return 'gallery';
+  if (page === 'blogs') return 'blogs';
+  if (page === 'contact') return 'contact';
+  if (page === 'profile') return 'profile';
+  if (page === 'settings') return 'settings';
+  return 'dashboard';
 }
 
 function ensureMainContentSlot() {

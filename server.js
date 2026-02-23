@@ -9,6 +9,7 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 3000;
 const JWT_SECRET = 'hotel-booking-secret-key-change-in-production';
+const AUTH_COOKIE_NAME = 'auth_token';
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
 const AVATAR_UPLOAD_DIR = path.join(__dirname, 'public', 'uploads', 'avatars');
@@ -165,9 +166,47 @@ const STAFF_ROLE_ICONS = {
 };
 
 // ─── Auth Middleware ───────────────────────────────────────────────
-function authenticateToken(req, res, next) {
+function setAuthCookie(res, token) {
+  res.cookie(AUTH_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/sitesh'
+  });
+}
+
+function clearAuthCookie(res) {
+  res.clearCookie(AUTH_COOKIE_NAME, { path: '/sitesh' });
+}
+
+function parseCookies(req) {
+  const cookieHeader = req.headers.cookie || '';
+  const cookies = {};
+
+  cookieHeader.split(';').forEach((pair) => {
+    const trimmed = pair.trim();
+    if (!trimmed) return;
+    const sepIndex = trimmed.indexOf('=');
+    if (sepIndex === -1) return;
+    const key = trimmed.slice(0, sepIndex).trim();
+    const value = trimmed.slice(sepIndex + 1).trim();
+    if (!key) return;
+    cookies[key] = decodeURIComponent(value);
+  });
+
+  return cookies;
+}
+
+function getRequestToken(req) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+  const cookies = parseCookies(req);
+  return cookies[AUTH_COOKIE_NAME] || '';
+}
+
+function authenticateToken(req, res, next) {
+  const token = getRequestToken(req);
 
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
@@ -179,6 +218,21 @@ function authenticateToken(req, res, next) {
     next();
   } catch {
     return res.status(403).json({ error: 'Invalid or expired token.' });
+  }
+}
+
+function requireDashboardAuth(req, res, next) {
+  const token = getRequestToken(req);
+  if (!token) {
+    return res.redirect('/sitesh/login');
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    return res.redirect('/sitesh/login');
   }
 }
 
@@ -315,6 +369,7 @@ app.post('/api/auth/login', (req, res) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
+    setAuthCookie(res, token);
 
     res.json({
       token,
@@ -353,6 +408,7 @@ app.post('/api/auth/register', (req, res) => {
         JWT_SECRET,
         { expiresIn: '24h' }
       );
+      setAuthCookie(res, token);
 
       res.status(201).json({
         token,
@@ -469,6 +525,7 @@ app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-
             JWT_SECRET,
             { expiresIn: '24h' }
           );
+          setAuthCookie(res, token);
 
           res.json({
             message: 'Profile updated successfully',
@@ -505,6 +562,12 @@ app.post('/api/profile', authenticateToken, express.raw({ type: 'multipart/form-
       return finishUpdate(nextAvatarUrl);
     });
   });
+});
+
+// POST /api/auth/logout
+app.post('/api/auth/logout', (req, res) => {
+  clearAuthCookie(res);
+  res.json({ message: 'Logged out successfully' });
 });
 
 // ─── Settings Routes ────────────────────────────────────────────
@@ -950,21 +1013,63 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Protected dashboard routes (auth checked client-side via app.js)
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+function sendPage(pageFile) {
+  return (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', pageFile));
+  };
+}
+
+const dashboardPageRoutes = [
+  { suffix: '', page: 'dashboard.html' },
+  { suffix: 'rooms', page: 'rooms.html' },
+  { suffix: 'bookings', page: 'bookings.html' },
+  { suffix: 'staff', page: 'staff.html' },
+  { suffix: 'about', page: 'about.html' },
+  { suffix: 'gallery', page: 'gallery.html' },
+  { suffix: 'blogs', page: 'blogs.html' },
+  { suffix: 'contact', page: 'contact.html' },
+  { suffix: 'profile', page: 'profile.html' },
+  { suffix: 'settings', page: 'settings.html' }
+];
+
+// Canonical protected dashboard routes under /sitesh/dashboard/*
+for (const route of dashboardPageRoutes) {
+  const fullPath = route.suffix ? `/sitesh/dashboard/${route.suffix}` : '/sitesh/dashboard';
+  app.get(fullPath, requireDashboardAuth, sendPage(route.page));
+}
+app.get('/sitesh/dashboard/bookings/:id', requireDashboardAuth, sendPage('booking-detail.html'));
+
+// Backward-compatible dashboard routes without /sitesh prefix
+for (const route of dashboardPageRoutes) {
+  const legacyPath = route.suffix ? `/dashboard/${route.suffix}` : '/dashboard';
+  const canonicalPath = route.suffix ? `/sitesh/dashboard/${route.suffix}` : '/sitesh/dashboard';
+  app.get(legacyPath, requireDashboardAuth, (req, res) => {
+    res.redirect(canonicalPath);
+  });
+}
+app.get('/dashboard/bookings/:id', requireDashboardAuth, (req, res) => {
+  res.redirect(`/sitesh/dashboard/bookings/${req.params.id}`);
 });
 
+// Legacy non-dashboard URLs redirected into /sitesh/dashboard/*
 app.get('/staff', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'staff.html'));
-});
-
-app.get('/dashboard/staff', (req, res) => {
-  res.redirect('/sitesh/staff');
+  res.redirect('/sitesh/dashboard/staff');
 });
 
 app.get('/bookings', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'bookings.html'));
+  res.redirect('/sitesh/dashboard/bookings');
+});
+
+app.get('/bookings/:id', (req, res) => {
+  res.redirect(`/sitesh/dashboard/bookings/${req.params.id}`);
+});
+
+app.get('/profile', (req, res) => {
+  res.redirect('/sitesh/dashboard/profile');
+});
+
+app.get('/settings', (req, res) => {
+  res.redirect('/sitesh/dashboard/settings');
 });
 
 // Public routes (canonical under /public)
@@ -1011,18 +1116,6 @@ app.get('/blogs', (req, res) => {
 
 app.get('/contact', (req, res) => {
   res.redirect('/sitesh/public/contact');
-});
-
-app.get('/profile', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'profile.html'));
-});
-
-app.get('/settings', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'settings.html'));
-});
-
-app.get('/bookings/:id', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'booking-detail.html'));
 });
 
 // Default route
