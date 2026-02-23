@@ -964,7 +964,7 @@ app.get('/dashboard/staff', (req, res) => {
 });
 
 app.get('/bookings', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'bookings.html'));
 });
 
 app.get('/rooms', (req, res) => {
@@ -999,9 +999,9 @@ app.get('/bookings/:id', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'booking-detail.html'));
 });
 
-// Root redirects to login
+// Public landing page
 app.get('/', (req, res) => {
-  res.redirect('/sitesh/login');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server

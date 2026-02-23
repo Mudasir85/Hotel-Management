@@ -3,268 +3,86 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contact Us - Hotel Booking System</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f0f2f5;
-      color: #333;
-      min-height: 100vh;
-    }
-
-    .container {
-      flex: 1;
-      padding: 24px;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-      padding: 24px;
-      margin-bottom: 24px;
-    }
-
-    .card h2 {
-      font-size: 1.2rem;
-      margin-bottom: 16px;
-      color: #1a73e8;
-    }
-
-    .card p {
-      font-size: 0.95rem;
-      line-height: 1.6;
-      color: #555;
-      margin-bottom: 12px;
-    }
-
-    .contact-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-
-    .contact-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 16px;
-      background: #f8f9fa;
-      border-radius: 8px;
-    }
-
-    .contact-icon {
-      width: 40px;
-      height: 40px;
-      background: #1a73e8;
-      color: #fff;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-
-    .contact-details h3 {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 4px;
-    }
-
-    .contact-details p {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 0;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .form-group.full-width {
-      grid-column: 1 / -1;
-    }
-
-    .form-group label {
-      font-size: 0.85rem;
-      font-weight: 500;
-      margin-bottom: 4px;
-      color: #555;
-    }
-
-    .form-group input,
-    .form-group textarea {
-      padding: 10px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      font-family: inherit;
-      transition: border-color 0.2s;
-    }
-
-    .form-group input:focus,
-    .form-group textarea:focus {
-      outline: none;
-      border-color: #1a73e8;
-      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
-    }
-
-    .form-group textarea {
-      resize: vertical;
-      min-height: 120px;
-    }
-
-    .btn {
-      padding: 10px 24px;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .btn-primary {
-      background: #1a73e8;
-      color: #fff;
-      margin-top: 16px;
-    }
-
-    .btn-primary:hover { background: #1557b0; }
-
-    .message {
-      padding: 12px 16px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      font-size: 0.9rem;
-      display: none;
-    }
-
-    .message.success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-
-    footer {
-      text-align: center;
-      padding: 24px;
-      color: #999;
-      font-size: 0.85rem;
-    }
-
-    @media (max-width: 600px) {
-      .contact-grid { grid-template-columns: 1fr; }
-      .form-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+  <title>Contact | Royal Hotel</title>
+  <link rel="stylesheet" href="/sitesh/public-site.css">
 </head>
 <body>
-  <div id="app-navbar"></div>
+  <header class="site-header">
+    <div class="container header-wrap">
+      <a class="brand" href="/sitesh"><span class="brand-logo">R</span><span>Royal Hotel</span></a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+      <nav class="site-nav">
+        <a href="/sitesh" data-page="home">Home</a>
+        <a href="/sitesh/about" data-page="about">About Us</a>
+        <a href="/sitesh/rooms" data-page="rooms">Rooms</a>
+        <a href="/sitesh/gallery" data-page="gallery">Gallery</a>
+        <a href="/sitesh/blogs" data-page="blogs">Blogs</a>
+        <a href="/sitesh/contact" data-page="contact">Contact</a>
+      </nav>
+      <div class="header-actions"><a href="/sitesh/login" class="btn btn-primary">Sign In</a></div>
+    </div>
+  </header>
 
-  <div class="main-content">
-  <div class="container">
-    <div id="message" class="message"></div>
+  <main>
+    <section class="section">
+      <div class="container">
+        <h1 class="section-title reveal">Contact Us</h1>
+        <p class="section-subtitle reveal">Have a question about bookings, services, or events? Our team is here to help.</p>
+        <div class="contact-grid">
+          <div class="info-list reveal">
+            <div class="info-item">
+              <strong>Address</strong>
+              Infront of V3s Mall near Vikash Deep Building, Nirman Vihar - 110093
+            </div>
+            <div class="info-item">
+              <strong>Phone</strong>
+              7004207424
+            </div>
+            <div class="info-item">
+              <strong>Email</strong>
+              sitesh2015@gmail.com
+            </div>
+            <div class="info-item">
+              <strong>Front Desk</strong>
+              24/7 Assistance | Check-in 3:00 PM | Check-out 11:00 AM
+            </div>
+          </div>
 
-    <!-- Contact Information -->
-    <div class="card">
-      <h2>Get in Touch</h2>
-      <p>Have questions about your booking or need assistance? We're here to help. Reach out to us through any of the channels below or fill out the contact form.</p>
-
-      <div class="contact-grid">
-        <div class="contact-item">
-          <div class="contact-icon">&#9742;</div>
-          <div class="contact-details">
-            <h3>Phone</h3>
-            <p>7004207424</p>
-            <p>Mon - Sun, 24/7</p>
-          </div>
-        </div>
-        <div class="contact-item">
-          <div class="contact-icon">&#9993;</div>
-          <div class="contact-details">
-            <h3>Email</h3>
-            <p>sitesh2015@gmail.com</p>
-            <p>We reply within 24 hours</p>
-          </div>
-        </div>
-        <div class="contact-item">
-          <div class="contact-icon">&#9873;</div>
-          <div class="contact-details">
-            <h3>Address</h3>
-            <p>Infront of V3s mall near vikash deep building nirman vihar -110093</p>
-          </div>
-        </div>
-        <div class="contact-item">
-          <div class="contact-icon">&#9201;</div>
-          <div class="contact-details">
-            <h3>Front Desk Hours</h3>
-            <p>Check-in: 3:00 PM</p>
-            <p>Check-out: 11:00 AM</p>
-          </div>
+          <article class="card card-body reveal">
+            <h3 class="feature-title">Send a Message</h3>
+            <form id="publicContactForm">
+              <div class="form-grid">
+                <div>
+                  <label for="name">Name</label>
+                  <input id="name" required placeholder="Your full name">
+                </div>
+                <div>
+                  <label for="email">Email</label>
+                  <input id="email" type="email" required placeholder="you@example.com">
+                </div>
+                <div class="full">
+                  <label for="subject">Subject</label>
+                  <input id="subject" required placeholder="How can we help?">
+                </div>
+                <div class="full">
+                  <label for="message">Message</label>
+                  <textarea id="message" required placeholder="Write your message here..."></textarea>
+                </div>
+              </div>
+              <button class="btn btn-primary" type="submit" style="margin-top:12px;">Submit</button>
+              <p id="contactStatus" class="muted" style="margin-top:10px;"></p>
+            </form>
+          </article>
         </div>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <!-- Contact Form -->
-    <div class="card">
-      <h2>Send Us a Message</h2>
-      <form id="contactForm">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="name">Your Name</label>
-            <input type="text" id="name" required placeholder="Full name">
-          </div>
-          <div class="form-group">
-            <label for="email">Your Email</label>
-            <input type="email" id="email" required placeholder="email@example.com">
-          </div>
-          <div class="form-group full-width">
-            <label for="subject">Subject</label>
-            <input type="text" id="subject" required placeholder="How can we help?">
-          </div>
-          <div class="form-group full-width">
-            <label for="messageText">Message</label>
-            <textarea id="messageText" required placeholder="Tell us more about your inquiry..."></textarea>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary">Send Message</button>
-      </form>
-    </div>
-  </div>
-
-  <footer>
-    &copy; 2026 Hotel Booking System. All rights reserved.
+  <footer class="site-footer">
+    <div class="container"><p class="copyright">© 2026 Royal Hotel. All rights reserved.</p></div>
   </footer>
-  </div>
 
-  <script src="/sitesh/app.js"></script>
-  <script>
-    if (!initAppPage('contact')) throw new Error('Not authenticated');
-
-    const form = document.getElementById('contactForm');
-    const messageEl = document.getElementById('message');
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      messageEl.textContent = 'Thank you for your message! We will get back to you within 24 hours.';
-      messageEl.className = 'message success';
-      messageEl.style.display = 'block';
-      form.reset();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => { messageEl.style.display = 'none'; }, 5000);
-    });
-  </script>
+  <script src="/sitesh/public-site.js"></script>
+  <script>initPublicSite('contact');</script>
 </body>
 </html>

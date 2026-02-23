@@ -1,4 +1,5 @@
 const BASE = '/sitesh';
+const PROTECTED_ROUTES = new Set(['dashboard', 'bookings', 'staff', 'profile', 'settings']);
 
 // ─── Auth Utilities ───────────────────────────────────────────────
 const Auth = {
@@ -713,7 +714,7 @@ function isAppRoute(pathname) {
   if (!pathname.startsWith(BASE + '/')) return false;
   const afterBase = pathname.slice(BASE.length);
   const firstSegment = afterBase.split('/').filter(Boolean)[0];
-  return firstSegment && firstSegment !== 'login' && firstSegment !== 'api';
+  return !!firstSegment && PROTECTED_ROUTES.has(firstSegment);
 }
 
 function getActivePageFromPath(pathname) {
