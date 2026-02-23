@@ -16,21 +16,20 @@
     .btn-secondary { background: #6b7280; color: #fff; padding: 9px 13px; }
     .btn-edit { background: #0d6efd; color: #fff; padding: 7px 11px; font-size: .8rem; }
     .btn-delete { background: #dc3545; color: #fff; padding: 7px 11px; font-size: .8rem; }
-    .row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .btn-save { background: #2563eb; color: #fff; padding: 7px 10px; font-size: .8rem; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    .status-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
-    .room-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #fafafa; }
-    .room-title { font-weight: 700; margin-bottom: 4px; }
+    .filters { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto auto; gap: 10px; margin-bottom: 12px; }
+    input, select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 10px; font-size: .9rem; font-family: inherit; }
+    textarea { min-height: 80px; resize: vertical; }
+    .status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .room-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #fafafa; display: grid; gap: 8px; }
+    .room-title { font-weight: 700; margin-bottom: 2px; }
     .small { font-size: .8rem; color: #6b7280; }
     .badge { display: inline-block; border-radius: 999px; padding: 4px 9px; font-size: .75rem; font-weight: 700; border: 1px solid transparent; }
     .clean { color: #166534; background: #ecfdf3; border-color: #86efac; }
     .dirty { color: #991b1b; background: #fee2e2; border-color: #fca5a5; }
     .progress { color: #1d4ed8; background: #eff6ff; border-color: #93c5fd; }
     .maintenance { color: #9a3412; background: #fff7ed; border-color: #fdba74; }
-    .occupied { color: #6d28d9; background: #f3e8ff; border-color: #d8b4fe; }
-    .filters { display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: 10px; margin-bottom: 12px; }
-    input, select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 10px; font-size: .9rem; font-family: inherit; }
-    textarea { min-height: 84px; resize: vertical; }
     .table-wrap { overflow: auto; }
     table { width: 100%; border-collapse: collapse; min-width: 980px; }
     th, td { padding: 11px; text-align: left; border-bottom: 1px solid #eee; font-size: .88rem; vertical-align: top; }
@@ -46,7 +45,8 @@
     .form-group label { font-size: .83rem; font-weight: 600; color: #4b5563; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
     .empty { padding: 24px; text-align: center; color: #6b7280; border: 1px dashed #d1d5db; border-radius: 10px; }
-    @media (max-width: 1100px) { .row { grid-template-columns: 1fr; } .status-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } .filters { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 1200px) { .status-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 1100px) { .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 760px) { .status-grid { grid-template-columns: 1fr; } .top { flex-direction: column; align-items: stretch; } .form-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -57,37 +57,34 @@
       <div class="top">
         <div>
           <h1>Housekeeping</h1>
-          <p class="sub">Room status management, cleaning tasks, and maintenance tracking</p>
+          <p class="sub">Room status board and housekeeping task assignments</p>
         </div>
         <button class="btn btn-primary" onclick="openTaskModal()">+ Assign Task</button>
       </div>
 
-      <div class="row">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
-            <h3 style="margin:0;font-size:1rem;">Room Status Grid</h3>
-            <select id="statusFilter" style="max-width:220px;"><option value="">All Status</option><option>Clean</option><option>Dirty</option><option>In Progress</option><option>Maintenance</option><option>Occupied</option></select>
-          </div>
-          <div id="roomGrid" class="status-grid"></div>
-        </div>
-
-        <div class="card">
-          <h3 style="margin:0 0 10px;font-size:1rem;">Quick Status Update</h3>
-          <div class="form-group" style="margin-bottom:8px;"><label>Room Number</label><select id="qsRoom"></select></div>
-          <div class="form-group" style="margin-bottom:8px;"><label>Status</label><select id="qsStatus"><option>Clean</option><option>Dirty</option><option>In Progress</option><option>Maintenance</option><option>Occupied</option></select></div>
-          <div class="form-group" style="margin-bottom:8px;"><label>Assigned Staff ID (optional)</label><input id="qsStaff" placeholder="e.g. 1"></div>
-          <button class="btn btn-secondary" onclick="saveQuickStatus()">Update Room Status</button>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="filters" style="margin-bottom:0;">
+          <input id="qSearch" placeholder="Search room number or staff name">
+          <select id="qStatus">
+            <option value="">All Status</option>
+            <option value="Clean">Clean</option>
+            <option value="Dirty">Dirty</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Maintenance">Maintenance</option>
+          </select>
+          <div></div>
+          <button class="btn btn-secondary" onclick="applyFilters()">Filter</button>
+          <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:12px;">
+        <h3 style="margin:0 0 10px;font-size:1rem;">Room Status Grid</h3>
+        <div id="roomGrid" class="status-grid"></div>
+      </div>
+
       <div class="card">
-        <div class="filters">
-          <select id="qTaskStatus"><option value="">All Task Status</option><option>Clean</option><option>Dirty</option><option>In Progress</option><option>Maintenance</option><option>Occupied</option></select>
-          <select id="qPriority"><option value="">All Priorities</option><option>Urgent</option><option>High</option><option>Normal</option><option>Low</option></select>
-          <select id="qRoom"><option value="">All Rooms</option></select>
-          <button class="btn btn-secondary" onclick="loadTasks()">Filter</button>
-          <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
-        </div>
+        <h3 style="margin:0 0 10px;font-size:1rem;">Housekeeping Tasks</h3>
         <div id="taskTable" class="table-wrap"><div class="empty">Loading tasks...</div></div>
       </div>
     </div>
@@ -99,12 +96,11 @@
       <form id="taskForm">
         <div class="form-grid">
           <div class="form-group"><label>Room Number</label><select id="fRoom" required></select></div>
-          <div class="form-group"><label>Staff</label><select id="fStaff"></select></div>
-          <div class="form-group"><label>Status</label><select id="fStatus" required><option>Dirty</option><option>In Progress</option><option>Clean</option><option>Maintenance</option><option>Occupied</option></select></div>
-          <div class="form-group"><label>Priority</label><select id="fPriority" required><option>Normal</option><option>High</option><option>Urgent</option><option>Low</option></select></div>
-          <div class="form-group"><label>Assigned Date/Time</label><input id="fAssigned" type="datetime-local" required></div>
-          <div class="form-group"><label>Completed Date/Time</label><input id="fCompleted" type="datetime-local"></div>
-          <div class="form-group full"><label>Notes</label><textarea id="fNotes" placeholder="Issues found, special requests, maintenance details..."></textarea></div>
+          <div class="form-group"><label>Assigned Staff</label><select id="fStaff"></select></div>
+          <div class="form-group"><label>Status</label><select id="fStatus" required><option>Dirty</option><option>In Progress</option><option>Clean</option><option>Maintenance</option></select></div>
+          <div class="form-group"><label>Assigned Date</label><input id="fAssigned" type="datetime-local" required></div>
+          <div class="form-group"><label>Completed Date</label><input id="fCompleted" type="datetime-local"></div>
+          <div class="form-group full"><label>Notes</label><textarea id="fNotes" placeholder="Cleaning notes or maintenance comments"></textarea></div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
@@ -134,10 +130,11 @@
     const STAFF_API = BASE + '/api/staff';
     const ROOMS_API = BASE + '/api/rooms/capacity';
 
-    let roomStatus = [];
-    let tasks = [];
-    let staff = [];
     let rooms = [];
+    let staff = [];
+    let roomStatusRows = [];
+    let allTasks = [];
+    let visibleTasks = [];
     let editingId = null;
     let deleteId = null;
 
@@ -147,54 +144,86 @@
     const deleteModal = document.getElementById('deleteModal');
     const taskForm = document.getElementById('taskForm');
 
-    function esc(v) { return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-    function toLocalDateTimeValue(iso) {
-      const d = iso ? new Date(iso) : new Date();
-      if (Number.isNaN(d.getTime())) return '';
-      const p = (n) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-    }
+    function esc(v) { return String(v || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function fmtDate(value) {
       const d = new Date(value);
       if (Number.isNaN(d.getTime())) return '-';
       return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
+    function toLocalDateTimeValue(iso) {
+      const d = iso ? new Date(iso) : new Date();
+      if (Number.isNaN(d.getTime())) return '';
+      const p = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
     function statusClass(status) {
       if (status === 'Clean') return 'clean';
       if (status === 'Dirty') return 'dirty';
       if (status === 'In Progress') return 'progress';
-      if (status === 'Maintenance') return 'maintenance';
-      return 'occupied';
+      return 'maintenance';
+    }
+
+    function normalizeTaskStatus(status) {
+      return ['Clean', 'Dirty', 'In Progress', 'Maintenance'].includes(status) ? status : 'Dirty';
+    }
+
+    function staffOptions(selectedId) {
+      const options = ['<option value="">Unassigned</option>'];
+      staff.forEach((s) => {
+        const selected = String(s.id) === String(selectedId || '') ? 'selected' : '';
+        options.push(`<option value="${s.id}" ${selected}>${esc(s.name)} (${esc(s.role)})</option>`);
+      });
+      return options.join('');
+    }
+
+    function roomOptions(selectedRoom) {
+      return rooms.map((room) => `<option value="${room}" ${String(room) === String(selectedRoom || '') ? 'selected' : ''}>Room ${room}</option>`).join('');
     }
 
     function renderRoomGrid() {
-      if (!roomStatus.length) {
+      if (!roomStatusRows.length) {
         roomGrid.innerHTML = '<div class="empty">No room status found.</div>';
         return;
       }
-      roomGrid.innerHTML = roomStatus.map((r) => `
+
+      roomGrid.innerHTML = roomStatusRows.map((r) => `
         <div class="room-card">
-          <div class="room-title">Room ${esc(r.room_number)}</div>
-          <div style="margin-bottom:6px;"><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></div>
-          <div class="small">Assigned: ${esc(r.assigned_staff_name || '-')}</div>
-          <div class="small">Last Cleaned: ${r.last_cleaned ? fmtDate(r.last_cleaned) : '-'}</div>
+          <div>
+            <div class="room-title">Room ${esc(r.room_number)}</div>
+            <div><span class="badge ${statusClass(normalizeTaskStatus(r.status))}">${esc(normalizeTaskStatus(r.status))}</span></div>
+            <div class="small">Assigned Staff: ${esc(r.assigned_staff_name || '-')}</div>
+            <div class="small">Last Cleaned: ${r.last_cleaned ? fmtDate(r.last_cleaned) : '-'}</div>
+          </div>
+          <div>
+            <label class="small">Update Status</label>
+            <select id="cardStatus-${esc(r.room_number)}">
+              <option ${normalizeTaskStatus(r.status) === 'Clean' ? 'selected' : ''}>Clean</option>
+              <option ${normalizeTaskStatus(r.status) === 'Dirty' ? 'selected' : ''}>Dirty</option>
+              <option ${normalizeTaskStatus(r.status) === 'In Progress' ? 'selected' : ''}>In Progress</option>
+              <option ${normalizeTaskStatus(r.status) === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
+            </select>
+          </div>
+          <div>
+            <label class="small">Assign Staff</label>
+            <select id="cardStaff-${esc(r.room_number)}">${staffOptions(r.assigned_staff || '')}</select>
+          </div>
+          <button class="btn btn-save" onclick="saveCardStatus('${esc(r.room_number)}')">Save</button>
         </div>
       `).join('');
     }
 
     function renderTasks() {
-      if (!tasks.length) {
+      if (!visibleTasks.length) {
         taskTable.innerHTML = '<div class="empty">No housekeeping tasks found.</div>';
         return;
       }
 
-      const rows = tasks.map((t) => `
+      const rows = visibleTasks.map((t) => `
         <tr>
           <td>#${t.id}</td>
           <td>Room ${esc(t.room_number)}</td>
           <td>${esc(t.staff_name || '-')}</td>
-          <td><span class="badge ${statusClass(t.status)}">${esc(t.status)}</span></td>
-          <td>${esc(t.priority)}</td>
+          <td><span class="badge ${statusClass(normalizeTaskStatus(t.status))}">${esc(normalizeTaskStatus(t.status))}</span></td>
           <td>${fmtDate(t.assigned_date)}</td>
           <td>${t.completed_date ? fmtDate(t.completed_date) : '-'}</td>
           <td>${esc(t.notes || '-')}</td>
@@ -209,84 +238,31 @@
 
       taskTable.innerHTML = `
         <table>
-          <thead><tr><th>ID</th><th>Room</th><th>Staff</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Completed</th><th>Notes</th><th>Actions</th></tr></thead>
+          <thead><tr><th>ID</th><th>Room</th><th>Assigned Staff</th><th>Status</th><th>Assigned</th><th>Completed</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       `;
     }
 
-    function populateCommonSelectors() {
-      const roomOptions = rooms.map((r) => `<option value="${r}">Room ${r}</option>`).join('');
-      document.getElementById('fRoom').innerHTML = roomOptions;
-      document.getElementById('qsRoom').innerHTML = roomOptions;
-      document.getElementById('qRoom').innerHTML = '<option value="">All Rooms</option>' + roomOptions;
+    function applyFilters() {
+      const search = document.getElementById('qSearch').value.trim().toLowerCase();
+      const status = document.getElementById('qStatus').value;
 
-      const staffOptions = '<option value="">Unassigned</option>' + staff.map((s) => `<option value="${s.id}">${esc(s.name)} (${esc(s.role)})</option>`).join('');
-      document.getElementById('fStaff').innerHTML = staffOptions;
-    }
+      visibleTasks = allTasks.filter((t) => {
+        const statusMatch = !status || normalizeTaskStatus(t.status) === status;
+        if (!statusMatch) return false;
+        if (!search) return true;
+        return String(t.room_number || '').toLowerCase().includes(search) || String(t.staff_name || '').toLowerCase().includes(search);
+      });
 
-    async function loadRooms() {
-      const res = await fetch(ROOMS_API, { headers: Auth.headers() });
-      if (res.status === 401 || res.status === 403) return Auth.logout();
-      if (!res.ok) return showToast('Failed to load rooms', 'error');
-      const map = await res.json();
-      rooms = Object.keys(map).sort();
-    }
-
-    async function loadStaff() {
-      const res = await fetch(STAFF_API, { headers: Auth.headers() });
-      if (res.status === 401 || res.status === 403) return Auth.logout();
-      if (!res.ok) return showToast('Failed to load staff', 'error');
-      staff = await res.json();
-    }
-
-    async function loadRoomStatus() {
-      const status = document.getElementById('statusFilter').value;
-      const qp = status ? `?status=${encodeURIComponent(status)}` : '';
-      try {
-        const res = await fetch(ROOM_STATUS_API + qp, { headers: Auth.headers() });
-        if (res.status === 401 || res.status === 403) return Auth.logout();
-        if (!res.ok) return showToast('Failed to load room status', 'error');
-        roomStatus = await res.json();
-        renderRoomGrid();
-      } catch {
-        showToast('Failed to load room status', 'error');
-      }
-    }
-
-    function buildTaskQuery() {
-      const qp = new URLSearchParams();
-      const status = document.getElementById('qTaskStatus').value;
-      const priority = document.getElementById('qPriority').value;
-      const room = document.getElementById('qRoom').value;
-      if (status) qp.set('status', status);
-      if (priority) qp.set('priority', priority);
-      if (room) qp.set('room_number', room);
-      const s = qp.toString();
-      return s ? `?${s}` : '';
-    }
-
-    async function loadTasks() {
-      taskTable.innerHTML = '<div class="empty">Loading tasks...</div>';
-      try {
-        const res = await fetch(TASK_API + buildTaskQuery(), { headers: Auth.headers() });
-        if (res.status === 401 || res.status === 403) return Auth.logout();
-        if (!res.ok) {
-          taskTable.innerHTML = '<div class="empty">Failed to load tasks.</div>';
-          return;
-        }
-        tasks = await res.json();
-        renderTasks();
-      } catch {
-        taskTable.innerHTML = '<div class="empty">Failed to load tasks.</div>';
-      }
+      renderTasks();
     }
 
     function resetFilters() {
-      document.getElementById('qTaskStatus').value = '';
-      document.getElementById('qPriority').value = '';
-      document.getElementById('qRoom').value = '';
-      loadTasks();
+      document.getElementById('qSearch').value = '';
+      document.getElementById('qStatus').value = '';
+      visibleTasks = allTasks.slice();
+      renderTasks();
     }
 
     function resetForm() {
@@ -294,56 +270,118 @@
       editingId = null;
       document.getElementById('taskModalTitle').textContent = 'Assign Housekeeping Task';
       document.getElementById('saveBtn').textContent = 'Save';
+      document.getElementById('fRoom').innerHTML = roomOptions('');
+      document.getElementById('fStaff').innerHTML = staffOptions('');
       document.getElementById('fStatus').value = 'Dirty';
-      document.getElementById('fPriority').value = 'Normal';
       document.getElementById('fAssigned').value = toLocalDateTimeValue(new Date().toISOString());
       document.getElementById('fCompleted').value = '';
+      document.getElementById('fNotes').value = '';
+    }
+
+    async function loadRooms() {
+      const res = await fetch(ROOMS_API, { headers: Auth.headers() });
+      if (res.status === 401 || res.status === 403) return Auth.logout();
+      if (!res.ok) throw new Error('Failed to load rooms');
+      const map = await res.json();
+      rooms = Object.keys(map).sort();
+    }
+
+    async function loadStaff() {
+      const res = await fetch(STAFF_API, { headers: Auth.headers() });
+      if (res.status === 401 || res.status === 403) return Auth.logout();
+      if (!res.ok) throw new Error('Failed to load staff');
+      staff = await res.json();
+    }
+
+    async function loadRoomStatus() {
+      const status = document.getElementById('qStatus').value;
+      const qp = status ? `?status=${encodeURIComponent(status)}` : '';
+      const res = await fetch(ROOM_STATUS_API + qp, { headers: Auth.headers() });
+      if (res.status === 401 || res.status === 403) return Auth.logout();
+      if (!res.ok) throw new Error('Failed to load room status');
+      roomStatusRows = await res.json();
+      renderRoomGrid();
+    }
+
+    async function loadTasks() {
+      taskTable.innerHTML = '<div class="empty">Loading tasks...</div>';
+      const res = await fetch(TASK_API, { headers: Auth.headers() });
+      if (res.status === 401 || res.status === 403) return Auth.logout();
+      if (!res.ok) throw new Error('Failed to load tasks');
+      allTasks = await res.json();
+      visibleTasks = allTasks.slice();
+      applyFilters();
+    }
+
+    async function saveCardStatus(roomNumber) {
+      const status = document.getElementById(`cardStatus-${roomNumber}`).value;
+      const staffId = document.getElementById(`cardStaff-${roomNumber}`).value;
+      try {
+        const res = await fetch(`${ROOM_STATUS_API}/${encodeURIComponent(roomNumber)}`, {
+          method: 'POST',
+          headers: Auth.headers(),
+          body: JSON.stringify({
+            status,
+            assigned_staff: staffId,
+            last_cleaned: status === 'Clean' ? new Date().toISOString() : ''
+          })
+        });
+        if (res.status === 401 || res.status === 403) return Auth.logout();
+        const data = await res.json();
+        if (!res.ok) return showToast(data.error || 'Failed to save room status', 'error');
+        showToast('Room status updated', 'success');
+        loadRoomStatus();
+      } catch {
+        showToast('Failed to save room status', 'error');
+      }
     }
 
     function openTaskModal(id = null) {
       resetForm();
       if (id) {
-        const t = tasks.find((x) => x.id === id);
-        if (!t) return showToast('Task not found', 'error');
+        const task = allTasks.find((x) => x.id === id);
+        if (!task) return showToast('Task not found', 'error');
         editingId = id;
         document.getElementById('taskModalTitle').textContent = `Edit Task #${id}`;
         document.getElementById('saveBtn').textContent = 'Update';
-        document.getElementById('fRoom').value = t.room_number;
-        document.getElementById('fStaff').value = t.staff_id || '';
-        document.getElementById('fStatus').value = t.status;
-        document.getElementById('fPriority').value = t.priority;
-        document.getElementById('fAssigned').value = toLocalDateTimeValue(t.assigned_date);
-        document.getElementById('fCompleted').value = t.completed_date ? toLocalDateTimeValue(t.completed_date) : '';
-        document.getElementById('fNotes').value = t.notes || '';
+        document.getElementById('fRoom').innerHTML = roomOptions(task.room_number);
+        document.getElementById('fStaff').innerHTML = staffOptions(task.staff_id || '');
+        document.getElementById('fStatus').value = normalizeTaskStatus(task.status);
+        document.getElementById('fAssigned').value = toLocalDateTimeValue(task.assigned_date);
+        document.getElementById('fCompleted').value = task.completed_date ? toLocalDateTimeValue(task.completed_date) : '';
+        document.getElementById('fNotes').value = task.notes || '';
       }
       taskModal.classList.add('open');
     }
 
-    function closeTaskModal() { taskModal.classList.remove('open'); resetForm(); }
+    function closeTaskModal() {
+      taskModal.classList.remove('open');
+      resetForm();
+    }
 
     function openDeleteModal(id) {
-      const t = tasks.find((x) => x.id === id);
-      if (!t) return showToast('Task not found', 'error');
+      const task = allTasks.find((x) => x.id === id);
+      if (!task) return showToast('Task not found', 'error');
       deleteId = id;
-      document.getElementById('deleteText').textContent = `Delete task #${id} for Room ${t.room_number}?`;
+      document.getElementById('deleteText').textContent = `Delete task #${id} for Room ${task.room_number}?`;
       deleteModal.classList.add('open');
     }
 
-    function closeDeleteModal() { deleteId = null; deleteModal.classList.remove('open'); }
+    function closeDeleteModal() {
+      deleteId = null;
+      deleteModal.classList.remove('open');
+    }
 
     async function confirmDelete() {
       if (!deleteId) return;
       try {
         const res = await fetch(`${TASK_API}/${deleteId}`, { method: 'DELETE', headers: Auth.headers() });
         if (res.status === 401 || res.status === 403) return Auth.logout();
-        if (!res.ok) {
-          const j = await res.json();
-          return showToast(j.error || 'Failed to delete task', 'error');
-        }
-        showToast('Task deleted successfully', 'success');
+        const data = await res.json();
+        if (!res.ok) return showToast(data.error || 'Failed to delete task', 'error');
+        showToast('Task deleted', 'success');
         closeDeleteModal();
-        loadTasks();
-        loadRoomStatus();
+        await Promise.all([loadTasks(), loadRoomStatus()]);
       } catch {
         showToast('Failed to delete task', 'error');
       }
@@ -355,7 +393,7 @@
         room_number: document.getElementById('fRoom').value,
         staff_id: document.getElementById('fStaff').value || null,
         status: document.getElementById('fStatus').value,
-        priority: document.getElementById('fPriority').value,
+        priority: 'Normal',
         assigned_date: new Date(document.getElementById('fAssigned').value).toISOString(),
         completed_date: document.getElementById('fCompleted').value ? new Date(document.getElementById('fCompleted').value).toISOString() : '',
         notes: document.getElementById('fNotes').value.trim()
@@ -367,60 +405,41 @@
       try {
         const res = await fetch(url, { method, headers: Auth.headers(), body: JSON.stringify(payload) });
         if (res.status === 401 || res.status === 403) return Auth.logout();
-        const j = await res.json();
-        if (!res.ok) return showToast(j.error || 'Failed to save task', 'error');
+        const data = await res.json();
+        if (!res.ok) return showToast(data.error || 'Failed to save task', 'error');
         showToast(editingId ? 'Task updated' : 'Task assigned', 'success');
         closeTaskModal();
-        loadTasks();
-        loadRoomStatus();
+        await Promise.all([loadTasks(), loadRoomStatus()]);
       } catch {
         showToast('Failed to save task', 'error');
       }
     });
 
-    async function saveQuickStatus() {
-      const room = document.getElementById('qsRoom').value;
-      const status = document.getElementById('qsStatus').value;
-      const staffId = document.getElementById('qsStaff').value.trim();
-      try {
-        const res = await fetch(`${ROOM_STATUS_API}/${encodeURIComponent(room)}`, {
-          method: 'POST',
-          headers: Auth.headers(),
-          body: JSON.stringify({
-            status,
-            assigned_staff: staffId,
-            last_cleaned: status === 'Clean' ? new Date().toISOString() : ''
-          })
-        });
-        if (res.status === 401 || res.status === 403) return Auth.logout();
-        const j = await res.json();
-        if (!res.ok) return showToast(j.error || 'Failed to update room status', 'error');
-        showToast('Room status updated', 'success');
-        loadRoomStatus();
-      } catch {
-        showToast('Failed to update room status', 'error');
-      }
-    }
-
     taskModal.addEventListener('click', (e) => { if (e.target === taskModal) closeTaskModal(); });
     deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModal(); });
-    document.getElementById('statusFilter').addEventListener('change', loadRoomStatus);
+    document.getElementById('qSearch').addEventListener('input', applyFilters);
+    document.getElementById('qStatus').addEventListener('change', () => {
+      loadRoomStatus().catch(() => showToast('Failed to filter room status', 'error'));
+      applyFilters();
+    });
 
+    window.applyFilters = applyFilters;
+    window.resetFilters = resetFilters;
+    window.saveCardStatus = saveCardStatus;
     window.openTaskModal = openTaskModal;
     window.closeTaskModal = closeTaskModal;
     window.openDeleteModal = openDeleteModal;
     window.closeDeleteModal = closeDeleteModal;
     window.confirmDelete = confirmDelete;
-    window.saveQuickStatus = saveQuickStatus;
-    window.loadTasks = loadTasks;
-    window.resetFilters = resetFilters;
 
     (async function init() {
-      await Promise.all([loadRooms(), loadStaff()]);
-      populateCommonSelectors();
-      resetForm();
-      loadRoomStatus();
-      loadTasks();
+      try {
+        await Promise.all([loadRooms(), loadStaff()]);
+        resetForm();
+        await Promise.all([loadRoomStatus(), loadTasks()]);
+      } catch {
+        showToast('Failed to initialize housekeeping page', 'error');
+      }
     })();
   </script>
 </body>

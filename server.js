@@ -2177,6 +2177,28 @@ app.get('/api/payments', authenticateToken, (req, res) => {
   );
 });
 
+app.get('/api/payments/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.get(
+    `
+      SELECT p.id, p.guest_id, p.room_number, p.amount, p.type, p.method, p.status, p.date, g.name AS guest_name
+      FROM payments p
+      LEFT JOIN guests g ON g.id = p.guest_id
+      WHERE p.id = ?
+    `,
+    [id],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch payment' });
+      }
+      if (!row) {
+        return res.status(404).json({ error: 'Payment not found' });
+      }
+      res.json({ ...row, amount: Number(row.amount || 0), guest_name: row.guest_name || 'Walk-in Guest' });
+    }
+  );
+});
+
 app.get('/api/payments/:id/receipt', authenticateToken, (req, res) => {
   const { id } = req.params;
   db.get(

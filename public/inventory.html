@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory - Hotel Booking System</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; }
+    .container { padding: 24px; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .top h1 { margin: 0 0 6px; font-size: 1.45rem; }
+    .sub { margin: 0; color: #6b7280; font-size: .92rem; }
+    .btn { border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: .9rem; }
+    .btn-primary { background: #1a73e8; color: #fff; padding: 10px 14px; }
+    .btn-secondary { background: #6b7280; color: #fff; padding: 9px 13px; }
+    .btn-edit { background: #0d6efd; color: #fff; padding: 7px 11px; font-size: .8rem; }
+    .btn-delete { background: #dc3545; color: #fff; padding: 7px 11px; font-size: .8rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .summary-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; }
+    .summary-card .label { color: #6b7280; font-size: .8rem; margin-bottom: 5px; }
+    .summary-card .value { font-size: 1.25rem; font-weight: 700; color: #111827; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .filters { display: grid; grid-template-columns: 1.5fr 1fr 1fr auto auto; gap: 10px; margin-bottom: 12px; }
+    input, select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 10px; font-size: .9rem; font-family: inherit; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 880px; }
+    th, td { padding: 11px; text-align: left; border-bottom: 1px solid #eee; font-size: .88rem; vertical-align: top; }
+    th { font-size: .8rem; text-transform: uppercase; color: #4b5563; background: #f8f9fa; }
+    .badge { display: inline-block; border-radius: 999px; padding: 4px 9px; font-size: .75rem; font-weight: 700; border: 1px solid transparent; }
+    .in-stock { color: #166534; background: #ecfdf3; border-color: #86efac; }
+    .low-stock { color: #854d0e; background: #fef9c3; border-color: #facc15; }
+    .out-stock { color: #991b1b; background: #fee2e2; border-color: #fca5a5; }
+    .actions { display: flex; gap: 8px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 2100; align-items: center; justify-content: center; padding: 12px; }
+    .modal-overlay.open { display: flex; }
+    .modal { width: 100%; max-width: 760px; background: #fff; border-radius: 12px; padding: 20px; max-height: 92vh; overflow: auto; }
+    .modal h2 { margin: 0 0 14px; font-size: 1.1rem; color: #1a73e8; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: grid; gap: 5px; }
+    .form-group label { font-size: .83rem; font-weight: 600; color: #4b5563; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .empty { padding: 24px; text-align: center; color: #6b7280; border: 1px dashed #d1d5db; border-radius: 10px; }
+    @media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .filters { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 760px) { .summary-grid { grid-template-columns: 1fr; } .top { flex-direction: column; align-items: stretch; } .form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+  <div class="main-content">
+    <div class="container">
+      <div class="top">
+        <div>
+          <h1>Inventory</h1>
+          <p class="sub" id="inventoryCount">0 items</p>
+        </div>
+        <button class="btn btn-primary" onclick="openItemModal()">+ Add Item</button>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card"><div class="label">Total Items</div><div class="value" id="sumTotal">0</div></div>
+        <div class="summary-card"><div class="label">Low Stock (<= 5)</div><div class="value" id="sumLow">0</div></div>
+        <div class="summary-card"><div class="label">Out of Stock</div><div class="value" id="sumOut">0</div></div>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <input id="qSearch" placeholder="Search item name">
+          <select id="qCategory">
+            <option value="">All Categories</option>
+            <option value="Food Ingredients">Food Ingredients</option>
+            <option value="Beverages">Beverages</option>
+            <option value="Housekeeping">Housekeeping Supplies</option>
+            <option value="Amenities">Amenities</option>
+          </select>
+          <select id="qStatus">
+            <option value="">All Status</option>
+            <option value="In Stock">In Stock</option>
+            <option value="Low Stock">Low Stock</option>
+            <option value="Out of Stock">Out of Stock</option>
+          </select>
+          <button class="btn btn-secondary" onclick="applyFilters()">Filter</button>
+          <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+        </div>
+        <div id="tableBox" class="table-wrap"><div class="empty">Loading inventory...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="itemModal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="itemModalTitle">Add Inventory Item</h2>
+      <form id="itemForm">
+        <div class="form-grid">
+          <div class="form-group"><label>Item Name</label><input id="fName" required></div>
+          <div class="form-group"><label>Category</label><select id="fCategory" required><option value="Food Ingredients">Food Ingredients</option><option value="Beverages">Beverages</option><option value="Housekeeping">Housekeeping Supplies</option><option value="Amenities">Amenities</option></select></div>
+          <div class="form-group"><label>Quantity</label><input id="fQuantity" type="number" min="0" step="0.01" required></div>
+          <div class="form-group"><label>Unit</label><select id="fUnit" required><option value="kg">kg</option><option value="ltr">ltr</option><option value="pcs">pcs</option></select></div>
+          <div class="form-group"><label>Reorder Level</label><input id="fReorder" type="number" min="0" step="0.01" value="5" required></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeItemModal()">Cancel</button>
+          <button class="btn btn-primary" type="submit" id="saveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal" style="max-width:420px;">
+      <h2>Delete Item</h2>
+      <p id="deleteText">Are you sure?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-delete" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('inventory')) throw new Error('Not authenticated');
+
+    const API = BASE + '/api/inventory-items';
+
+    let allItems = [];
+    let visibleItems = [];
+    let editingId = null;
+    let deleteId = null;
+
+    const tableBox = document.getElementById('tableBox');
+    const itemModal = document.getElementById('itemModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const itemForm = document.getElementById('itemForm');
+
+    function esc(v) { return String(v || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+    function getStatus(item) {
+      const qty = Number(item.quantity || 0);
+      if (qty <= 0) return 'Out of Stock';
+      if (qty <= 5) return 'Low Stock';
+      return 'In Stock';
+    }
+
+    function statusClass(status) {
+      if (status === 'In Stock') return 'in-stock';
+      if (status === 'Low Stock') return 'low-stock';
+      return 'out-stock';
+    }
+
+    function setSummary(items) {
+      const total = items.length;
+      const low = items.filter((i) => Number(i.quantity || 0) > 0 && Number(i.quantity || 0) <= 5).length;
+      const out = items.filter((i) => Number(i.quantity || 0) <= 0).length;
+      document.getElementById('sumTotal').textContent = total;
+      document.getElementById('sumLow').textContent = low;
+      document.getElementById('sumOut').textContent = out;
+    }
+
+    function renderTable() {
+      if (!visibleItems.length) {
+        tableBox.innerHTML = '<div class="empty">No inventory items found.</div>';
+        document.getElementById('inventoryCount').textContent = '0 items';
+        return;
+      }
+
+      const rows = visibleItems.map((item) => {
+        const status = getStatus(item);
+        return `
+          <tr>
+            <td>${esc(item.name)}</td>
+            <td>${esc(item.category === 'Housekeeping' ? 'Housekeeping Supplies' : item.category)}</td>
+            <td>${Number(item.quantity || 0).toFixed(2)}</td>
+            <td>${esc(item.unit)}</td>
+            <td><span class="badge ${statusClass(status)}">${esc(status)}</span></td>
+            <td>
+              <div class="actions">
+                <button class="btn btn-edit" onclick="openItemModal(${item.id})">Edit</button>
+                <button class="btn btn-delete" onclick="openDeleteModal(${item.id})">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tableBox.innerHTML = `
+        <table>
+          <thead><tr><th>Name</th><th>Category</th><th>Quantity</th><th>Unit</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      document.getElementById('inventoryCount').textContent = `${visibleItems.length} items`;
+    }
+
+    function applyFilters() {
+      const search = document.getElementById('qSearch').value.trim().toLowerCase();
+      const category = document.getElementById('qCategory').value;
+      const status = document.getElementById('qStatus').value;
+
+      visibleItems = allItems.filter((item) => {
+        const nameMatch = !search || String(item.name || '').toLowerCase().includes(search);
+        const categoryMatch = !category || item.category === category;
+        const statusMatch = !status || getStatus(item) === status;
+        return nameMatch && categoryMatch && statusMatch;
+      });
+
+      setSummary(visibleItems);
+      renderTable();
+    }
+
+    function resetFilters() {
+      document.getElementById('qSearch').value = '';
+      document.getElementById('qCategory').value = '';
+      document.getElementById('qStatus').value = '';
+      visibleItems = allItems.slice();
+      setSummary(visibleItems);
+      renderTable();
+    }
+
+    function resetForm() {
+      itemForm.reset();
+      editingId = null;
+      document.getElementById('itemModalTitle').textContent = 'Add Inventory Item';
+      document.getElementById('saveBtn').textContent = 'Save';
+      document.getElementById('fCategory').value = 'Food Ingredients';
+      document.getElementById('fUnit').value = 'kg';
+      document.getElementById('fQuantity').value = '0';
+      document.getElementById('fReorder').value = '5';
+    }
+
+    async function loadItems() {
+      tableBox.innerHTML = '<div class="empty">Loading inventory...</div>';
+      try {
+        const res = await fetch(API, { headers: Auth.headers() });
+        if (res.status === 401 || res.status === 403) return Auth.logout();
+        if (!res.ok) throw new Error('Failed to load inventory');
+        allItems = await res.json();
+        visibleItems = allItems.slice();
+        applyFilters();
+      } catch {
+        tableBox.innerHTML = '<div class="empty">Failed to load inventory.</div>';
+      }
+    }
+
+    function openItemModal(id = null) {
+      resetForm();
+      if (id) {
+        const item = allItems.find((x) => x.id === id);
+        if (!item) return showToast('Item not found', 'error');
+        editingId = id;
+        document.getElementById('itemModalTitle').textContent = `Edit Item #${id}`;
+        document.getElementById('saveBtn').textContent = 'Update';
+        document.getElementById('fName').value = item.name || '';
+        document.getElementById('fCategory').value = item.category || 'Food Ingredients';
+        document.getElementById('fQuantity').value = Number(item.quantity || 0);
+        document.getElementById('fUnit').value = item.unit || 'pcs';
+        document.getElementById('fReorder').value = Number(item.reorder_level || 5);
+      }
+      itemModal.classList.add('open');
+    }
+
+    function closeItemModal() {
+      itemModal.classList.remove('open');
+      resetForm();
+    }
+
+    function openDeleteModal(id) {
+      const item = allItems.find((x) => x.id === id);
+      if (!item) return showToast('Item not found', 'error');
+      deleteId = id;
+      document.getElementById('deleteText').textContent = `Delete inventory item ${item.name}?`;
+      deleteModal.classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      deleteId = null;
+      deleteModal.classList.remove('open');
+    }
+
+    async function confirmDelete() {
+      if (!deleteId) return;
+      try {
+        const res = await fetch(`${API}/${deleteId}`, { method: 'DELETE', headers: Auth.headers() });
+        if (res.status === 401 || res.status === 403) return Auth.logout();
+        const data = await res.json();
+        if (!res.ok) return showToast(data.error || 'Failed to delete item', 'error');
+        showToast('Item deleted successfully', 'success');
+        closeDeleteModal();
+        loadItems();
+      } catch {
+        showToast('Failed to delete item', 'error');
+      }
+    }
+
+    itemForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        name: document.getElementById('fName').value.trim(),
+        category: document.getElementById('fCategory').value,
+        quantity: Number(document.getElementById('fQuantity').value),
+        unit: document.getElementById('fUnit').value,
+        reorder_level: Number(document.getElementById('fReorder').value || 5),
+        supplier: '',
+        cost: 0
+      };
+
+      if (!payload.name || !payload.category || !payload.unit) {
+        return showToast('Name, category, and unit are required', 'error');
+      }
+      if (!Number.isFinite(payload.quantity) || payload.quantity < 0) {
+        return showToast('Quantity must be a valid number', 'error');
+      }
+
+      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId ? `${API}/${editingId}` : API;
+
+      try {
+        const res = await fetch(url, { method, headers: Auth.headers(), body: JSON.stringify(payload) });
+        if (res.status === 401 || res.status === 403) return Auth.logout();
+        const data = await res.json();
+        if (!res.ok) return showToast(data.error || 'Failed to save item', 'error');
+        showToast(editingId ? 'Item updated' : 'Item added', 'success');
+        closeItemModal();
+        loadItems();
+      } catch {
+        showToast('Failed to save item', 'error');
+      }
+    });
+
+    itemModal.addEventListener('click', (e) => { if (e.target === itemModal) closeItemModal(); });
+    deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModal(); });
+    document.getElementById('qSearch').addEventListener('input', applyFilters);
+
+    window.openItemModal = openItemModal;
+    window.closeItemModal = closeItemModal;
+    window.openDeleteModal = openDeleteModal;
+    window.closeDeleteModal = closeDeleteModal;
+    window.confirmDelete = confirmDelete;
+    window.applyFilters = applyFilters;
+    window.resetFilters = resetFilters;
+
+    resetForm();
+    loadItems();
+  </script>
+</body>
+</html>

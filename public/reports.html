@@ -14,17 +14,34 @@
     .btn { border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: .9rem; padding: 9px 12px; }
     .btn-primary { background: #1a73e8; color: #fff; }
     .btn-secondary { background: #6b7280; color: #fff; }
-    .toolbar { display: grid; grid-template-columns: 1fr auto auto auto auto auto; gap: 8px; margin-bottom: 12px; }
-    select, input { border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 10px; font-size: .9rem; }
-    .card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .toolbar { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: minmax(140px, 180px) auto auto auto; gap: 8px; align-items: center; }
+    .toolbar select { border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 10px; font-size: .9rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .summary-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; }
+    .summary-card .label { color: #6b7280; font-size: .82rem; margin-bottom: 6px; }
+    .summary-card .value { color: #111827; font-size: 1.22rem; font-weight: 700; }
+    .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    .card h3 { margin: 0 0 8px; font-size: 1rem; color: #111827; }
-    .chart-wrap { height: 280px; }
-    .stats { display: grid; gap: 8px; margin-top: 8px; }
-    .stat-row { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; font-size: .88rem; }
-    .stat-row:last-child { border-bottom: none; }
+    .card.wide { grid-column: 1 / -1; }
+    .card h3 { margin: 0 0 10px; font-size: 1rem; color: #111827; }
+    .chart-wrap { height: 320px; }
     .empty { padding: 24px; text-align: center; color: #6b7280; border: 1px dashed #d1d5db; border-radius: 10px; }
-    @media (max-width: 1100px) { .toolbar { grid-template-columns: 1fr 1fr; } .card-grid { grid-template-columns: 1fr; } }
+    @media print {
+      #app-navbar, .toolbar { display: none !important; }
+      .main-content { padding-top: 0 !important; }
+      .container { padding: 8px; }
+      .chart-wrap { height: 260px; }
+    }
+    @media (max-width: 1100px) {
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .top { flex-direction: column; align-items: stretch; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .toolbar { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -34,35 +51,41 @@
       <div class="top">
         <div>
           <h1>Reports</h1>
-          <p class="sub">Revenue, occupancy, menu performance, staff performance, and booking analytics</p>
+          <p class="sub">Revenue, occupancy, orders, and bookings analytics</p>
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:12px;">
-        <div class="toolbar">
-          <select id="range">
-            <option value="today">Today</option>
-            <option value="week">Week</option>
-            <option value="month" selected>Month</option>
-            <option value="year">Year</option>
-            <option value="custom">Custom</option>
-          </select>
-          <input id="start" type="date" disabled>
-          <input id="end" type="date" disabled>
-          <button class="btn btn-primary" onclick="loadReports()">Apply</button>
-          <button class="btn btn-secondary" onclick="exportExcel()">Export Excel</button>
-          <button class="btn btn-secondary" onclick="exportPdf()">Export PDF</button>
-        </div>
+      <div class="toolbar">
+        <select id="range">
+          <option value="today">Today</option>
+          <option value="week">Week</option>
+          <option value="month" selected>Month</option>
+          <option value="year">Year</option>
+        </select>
+        <button class="btn btn-primary" onclick="loadReports()">Apply</button>
+        <button class="btn btn-secondary" onclick="exportExcel()">Export Excel</button>
+        <button class="btn btn-secondary" onclick="exportPdf()">Export PDF</button>
       </div>
 
-      <div id="content">
-        <div class="card-grid">
-          <div class="card"><h3>Revenue Trend</h3><div class="chart-wrap"><canvas id="revenueChart"></canvas></div></div>
-          <div class="card"><h3>Revenue Breakdown</h3><div class="chart-wrap"><canvas id="breakdownChart"></canvas></div></div>
-          <div class="card"><h3>Occupancy Report</h3><div class="chart-wrap"><canvas id="occupancyChart"></canvas></div><div id="occupancyMeta" class="stats"></div></div>
-          <div class="card"><h3>Menu Performance</h3><div class="chart-wrap"><canvas id="menuChart"></canvas></div><div id="menuMeta" class="stats"></div></div>
-          <div class="card"><h3>Staff Performance</h3><div class="chart-wrap"><canvas id="staffChart"></canvas></div></div>
-          <div class="card"><h3>Booking Analytics</h3><div class="chart-wrap"><canvas id="bookingSourceChart"></canvas></div><div id="bookingMeta" class="stats"></div></div>
+      <div class="summary-grid">
+        <div class="summary-card"><div class="label">Total Revenue</div><div class="value" id="sumRevenue">₹0</div></div>
+        <div class="summary-card"><div class="label">Average Occupancy %</div><div class="value" id="sumOccupancy">0%</div></div>
+        <div class="summary-card"><div class="label">Total Orders</div><div class="value" id="sumOrders">0</div></div>
+        <div class="summary-card"><div class="label">Total Bookings</div><div class="value" id="sumBookings">0</div></div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="card wide">
+          <h3>Revenue Trend (Room vs Food vs Total)</h3>
+          <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Daily Occupancy Rates</h3>
+          <div class="chart-wrap"><canvas id="occupancyChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Top 10 Menu Items</h3>
+          <div class="chart-wrap"><canvas id="menuChart"></canvas></div>
         </div>
       </div>
     </div>
@@ -73,151 +96,238 @@
   <script>
     if (!initAppPage('reports')) throw new Error('Not authenticated');
 
-    const API = BASE + '/api/reports/overview';
-    let reportPayload = null;
-    const charts = {};
+    const REPORT_API = BASE + '/api/reports/overview';
+    const PAYMENTS_API = BASE + '/api/payments';
+    const ORDERS_API = BASE + '/api/orders';
+    const BOOKINGS_API = BASE + '/api/bookings';
 
-    function destroyChart(key) {
-      if (charts[key]) {
-        charts[key].destroy();
-        charts[key] = null;
-      }
+    const charts = { revenue: null, occupancy: null, menu: null };
+    let lastReport = null;
+
+    function esc(v) { return String(v || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function money(v) { return `₹${Number(v || 0).toFixed(0)}`; }
+
+    function getRange() {
+      return document.getElementById('range').value;
     }
 
-    function getQuery() {
-      const range = document.getElementById('range').value;
-      const qp = new URLSearchParams({ range });
-      if (range === 'custom') {
-        const start = document.getElementById('start').value;
-        const end = document.getElementById('end').value;
-        if (start && end) {
-          qp.set('start', start);
-          qp.set('end', end);
-        }
-      }
-      return `?${qp.toString()}`;
+    function parseISO(value) {
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? null : d;
     }
 
-    function currency(v) { return `₹${Number(v || 0).toFixed(0)}`; }
+    function getWindow(range) {
+      const now = new Date();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const start = new Date(end);
+      if (range === 'today') {
+        start.setHours(0, 0, 0, 0);
+      } else if (range === 'week') {
+        start.setDate(start.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+      } else if (range === 'month') {
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+      } else {
+        start.setMonth(0, 1);
+        start.setHours(0, 0, 0, 0);
+      }
+      return { start, end };
+    }
 
-    function renderCharts(data) {
-      destroyChart('revenue');
-      destroyChart('breakdown');
-      destroyChart('occupancy');
-      destroyChart('menu');
-      destroyChart('staff');
-      destroyChart('source');
+    function inRange(value, range) {
+      const d = parseISO(value);
+      if (!d) return false;
+      const { start, end } = getWindow(range);
+      return d >= start && d <= end;
+    }
 
+    function dayKey(value) {
+      const d = parseISO(value);
+      if (!d) return '';
+      return d.toISOString().slice(0, 10);
+    }
+
+    function buildRevenueSeries(payments, range) {
+      const filtered = payments.filter((p) => inRange(p.date, range));
+      const days = [...new Set(filtered.map((p) => dayKey(p.date)).filter(Boolean))].sort();
+      const roomMap = new Map();
+      const foodMap = new Map();
+      const totalMap = new Map();
+
+      filtered.forEach((p) => {
+        const day = dayKey(p.date);
+        if (!day) return;
+        const amount = Number(p.amount || 0);
+        totalMap.set(day, (totalMap.get(day) || 0) + amount);
+        if (p.type === 'Room') roomMap.set(day, (roomMap.get(day) || 0) + amount);
+        if (p.type === 'Food') foodMap.set(day, (foodMap.get(day) || 0) + amount);
+      });
+
+      return {
+        labels: days,
+        room: days.map((d) => Number(roomMap.get(d) || 0)),
+        food: days.map((d) => Number(foodMap.get(d) || 0)),
+        total: days.map((d) => Number(totalMap.get(d) || 0))
+      };
+    }
+
+    function renderRevenueChart(series) {
+      if (charts.revenue) charts.revenue.destroy();
       charts.revenue = new Chart(document.getElementById('revenueChart'), {
         type: 'line',
         data: {
-          labels: (data.revenue_trend || []).map((x) => x.day),
-          datasets: [{ label: 'Revenue (₹)', data: (data.revenue_trend || []).map((x) => Number(x.value || 0)), borderColor: '#1a73e8', backgroundColor: 'rgba(26,115,232,0.2)', tension: .32, fill: true }]
+          labels: series.labels,
+          datasets: [
+            { label: 'Room Revenue', data: series.room, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.12)', tension: .3, fill: false },
+            { label: 'Food Revenue', data: series.food, borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,.12)', tension: .3, fill: false },
+            { label: 'Total Revenue', data: series.total, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,.16)', tension: .3, fill: true }
+          ]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
       });
+    }
 
-      charts.breakdown = new Chart(document.getElementById('breakdownChart'), {
-        type: 'doughnut',
-        data: {
-          labels: ['Room', 'Food', 'Services'],
-          datasets: [{ data: [Number(data.revenue_breakdown.room || 0), Number(data.revenue_breakdown.food || 0), Number(data.revenue_breakdown.services || 0)], backgroundColor: ['#1a73e8', '#0f9d58', '#fbbc04'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
+    function renderOccupancyChart(rows) {
+      if (charts.occupancy) charts.occupancy.destroy();
       charts.occupancy = new Chart(document.getElementById('occupancyChart'), {
         type: 'bar',
         data: {
-          labels: (data.occupancy_report || []).map((x) => x.day),
-          datasets: [{ label: 'Occupancy %', data: (data.occupancy_report || []).map((x) => Number(x.occupancy_percent || 0).toFixed(1)), backgroundColor: '#2563eb' }]
+          labels: (rows || []).map((r) => r.day),
+          datasets: [{
+            label: 'Occupancy %',
+            data: (rows || []).map((r) => Number(r.occupancy_percent || 0).toFixed(1)),
+            backgroundColor: '#1d4ed8'
+          }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
       });
-      document.getElementById('occupancyMeta').innerHTML = `<div class="stat-row"><span>Average Occupancy</span><strong>${Number(data.average_occupancy_percent || 0).toFixed(1)}%</strong></div>`;
+    }
 
+    function renderMenuChart(items) {
+      if (charts.menu) charts.menu.destroy();
       charts.menu = new Chart(document.getElementById('menuChart'), {
         type: 'bar',
         data: {
-          labels: (data.menu_performance.top_items || []).map((x) => x.name),
-          datasets: [{ label: 'Qty Ordered', data: (data.menu_performance.top_items || []).map((x) => Number(x.ordered_qty || 0)), backgroundColor: '#0ea5e9' }]
+          labels: (items || []).map((x) => x.name),
+          datasets: [{
+            label: 'Qty Ordered',
+            data: (items || []).map((x) => Number(x.ordered_qty || 0)),
+            backgroundColor: '#0284c7'
+          }]
         },
-        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { position: 'bottom' } }
+        }
       });
-      document.getElementById('menuMeta').innerHTML = (data.menu_performance.category_sales || []).slice(0, 6).map((x) => `<div class="stat-row"><span>${x.category}</span><strong>${currency(x.revenue)}</strong></div>`).join('') || '<div class="empty">No menu data</div>';
+    }
 
-      charts.staff = new Chart(document.getElementById('staffChart'), {
-        type: 'bar',
-        data: {
-          labels: (data.staff_performance || []).map((x) => x.name),
-          datasets: [{ label: 'Tasks Handled', data: (data.staff_performance || []).map((x) => Number(x.tasks_handled || 0)), backgroundColor: '#16a34a' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+    function setSummary(payload) {
+      document.getElementById('sumRevenue').textContent = money(payload.totalRevenue);
+      document.getElementById('sumOccupancy').textContent = `${Number(payload.averageOccupancy || 0).toFixed(1)}%`;
+      document.getElementById('sumOrders').textContent = Number(payload.totalOrders || 0);
+      document.getElementById('sumBookings').textContent = Number(payload.totalBookings || 0);
+    }
 
-      charts.source = new Chart(document.getElementById('bookingSourceChart'), {
-        type: 'pie',
-        data: {
-          labels: (data.booking_analytics.booking_sources || []).map((x) => x.source),
-          datasets: [{ data: (data.booking_analytics.booking_sources || []).map((x) => Number(x.count || 0)), backgroundColor: ['#8b5cf6', '#f97316', '#14b8a6'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
+    function toCsvRows(report) {
+      const rows = [['Metric', 'Value']];
+      rows.push(['Total Revenue', Number(report.totalRevenue || 0).toFixed(2)]);
+      rows.push(['Average Occupancy %', Number(report.averageOccupancy || 0).toFixed(2)]);
+      rows.push(['Total Orders', Number(report.totalOrders || 0)]);
+      rows.push(['Total Bookings', Number(report.totalBookings || 0)]);
+      rows.push([]);
+      rows.push(['Date', 'Room Revenue', 'Food Revenue', 'Total Revenue']);
+      report.revenue.labels.forEach((label, i) => {
+        rows.push([
+          label,
+          Number(report.revenue.room[i] || 0).toFixed(2),
+          Number(report.revenue.food[i] || 0).toFixed(2),
+          Number(report.revenue.total[i] || 0).toFixed(2)
+        ]);
       });
-      document.getElementById('bookingMeta').innerHTML = `
-        <div class="stat-row"><span>Average Stay Duration</span><strong>${Number(data.booking_analytics.average_stay_duration || 0).toFixed(1)} days</strong></div>
-        <div class="stat-row"><span>Cancellation Rate</span><strong>${Number(data.booking_analytics.cancellation_rate || 0).toFixed(1)}%</strong></div>
-      `;
+      return rows;
     }
 
     async function loadReports() {
+      const range = getRange();
       try {
-        const res = await fetch(API + getQuery(), { headers: Auth.headers() });
-        if (res.status === 401 || res.status === 403) return Auth.logout();
-        if (!res.ok) {
-          const j = await res.json();
-          showToast(j.error || 'Failed to load reports', 'error');
+        const [overviewRes, paymentsRes, ordersRes, bookingsRes] = await Promise.all([
+          fetch(`${REPORT_API}?range=${encodeURIComponent(range)}`, { headers: Auth.headers() }),
+          fetch(PAYMENTS_API, { headers: Auth.headers() }),
+          fetch(ORDERS_API, { headers: Auth.headers() }),
+          fetch(BOOKINGS_API, { headers: Auth.headers() })
+        ]);
+
+        if ([overviewRes, paymentsRes, ordersRes, bookingsRes].some((r) => r.status === 401 || r.status === 403)) {
+          return Auth.logout();
+        }
+        if (!overviewRes.ok || !paymentsRes.ok || !ordersRes.ok || !bookingsRes.ok) {
+          showToast('Failed to load reports data', 'error');
           return;
         }
-        reportPayload = await res.json();
-        renderCharts(reportPayload);
-        showToast('Reports updated', 'success', 1800);
+
+        const overview = await overviewRes.json();
+        const payments = await paymentsRes.json();
+        const orders = await ordersRes.json();
+        const bookings = await bookingsRes.json();
+
+        const revenue = buildRevenueSeries(payments, range);
+        const totalRevenue = revenue.total.reduce((sum, v) => sum + Number(v || 0), 0);
+        const totalOrders = (orders || []).filter((o) => inRange(o.order_date, range)).length;
+        const totalBookings = (bookings || []).filter((b) => inRange(b.check_in_date, range)).length;
+
+        const payload = {
+          range,
+          totalRevenue,
+          averageOccupancy: Number(overview.average_occupancy_percent || 0),
+          totalOrders,
+          totalBookings,
+          revenue,
+          occupancy: overview.occupancy_report || [],
+          topMenu: (overview.menu_performance && overview.menu_performance.top_items ? overview.menu_performance.top_items : []).slice(0, 10)
+        };
+
+        lastReport = payload;
+        setSummary(payload);
+        renderRevenueChart(payload.revenue);
+        renderOccupancyChart(payload.occupancy);
+        renderMenuChart(payload.topMenu);
+        showToast('Reports updated', 'success', 1600);
       } catch {
         showToast('Failed to load reports', 'error');
       }
     }
 
     function exportExcel() {
-      if (!reportPayload) return showToast('Load report first', 'error');
-      const rows = [['Section', 'Metric', 'Value']];
-      rows.push(['Revenue', 'Room Revenue', Number(reportPayload.revenue_breakdown.room || 0).toFixed(0)]);
-      rows.push(['Revenue', 'Food Revenue', Number(reportPayload.revenue_breakdown.food || 0).toFixed(0)]);
-      rows.push(['Revenue', 'Services Revenue', Number(reportPayload.revenue_breakdown.services || 0).toFixed(0)]);
-      rows.push(['Occupancy', 'Average Occupancy %', Number(reportPayload.average_occupancy_percent || 0).toFixed(1)]);
-      rows.push(['Booking', 'Average Stay Duration', Number(reportPayload.booking_analytics.average_stay_duration || 0).toFixed(1)]);
-      rows.push(['Booking', 'Cancellation Rate %', Number(reportPayload.booking_analytics.cancellation_rate || 0).toFixed(1)]);
-      (reportPayload.menu_performance.category_sales || []).forEach((row) => rows.push(['Menu Category', row.category, Number(row.revenue || 0).toFixed(0)]));
-      const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      if (!lastReport) return showToast('Load report first', 'error');
+      const rows = toCsvRows(lastReport);
+      const csv = rows.map((row) => row.map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'reports.xlsx.csv';
+      a.download = `reports-${lastReport.range}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast('Report exported (Excel CSV)', 'success');
+      showToast('Excel export generated', 'success');
     }
 
     function exportPdf() {
-      if (!reportPayload) return showToast('Load report first', 'error');
+      if (!lastReport) return showToast('Load report first', 'error');
       window.print();
-      showToast('Print dialog opened for PDF save', 'success');
+      showToast('Print dialog opened for PDF export', 'info');
     }
-
-    document.getElementById('range').addEventListener('change', (e) => {
-      const custom = e.target.value === 'custom';
-      document.getElementById('start').disabled = !custom;
-      document.getElementById('end').disabled = !custom;
-    });
 
     window.loadReports = loadReports;
     window.exportExcel = exportExcel;
