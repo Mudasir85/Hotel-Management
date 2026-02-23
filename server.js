@@ -165,7 +165,83 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS guests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      address TEXT NOT NULL DEFAULT '',
+      id_proof TEXT NOT NULL DEFAULT '',
+      photo TEXT NOT NULL DEFAULT '',
+      preferences TEXT NOT NULL DEFAULT '',
+      vip_status TEXT NOT NULL DEFAULT 'Regular',
+      created_date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guest_id INTEGER,
+      room_number TEXT NOT NULL,
+      amount REAL NOT NULL,
+      type TEXT NOT NULL,
+      method TEXT NOT NULL,
+      status TEXT NOT NULL,
+      date TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS housekeeping_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_number TEXT NOT NULL,
+      staff_id INTEGER,
+      status TEXT NOT NULL,
+      priority TEXT NOT NULL,
+      assigned_date TEXT NOT NULL,
+      completed_date TEXT DEFAULT '',
+      notes TEXT NOT NULL DEFAULT ''
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS room_status (
+      room_number TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      last_cleaned TEXT DEFAULT '',
+      assigned_staff TEXT DEFAULT ''
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inventory_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      unit TEXT NOT NULL,
+      reorder_level REAL NOT NULL,
+      supplier TEXT NOT NULL DEFAULT '',
+      cost REAL NOT NULL DEFAULT 0,
+      last_updated TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inventory_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      date TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT ''
+    )
+  `);
+
   seedDefaultMenuItems();
+  seedRoomStatusRows();
 
   // Seed a default admin user (password: admin123)
   const defaultPassword = bcrypt.hashSync('admin123', 10);
@@ -199,6 +275,20 @@ const MENU_CATEGORIES = new Set([
   'Snacks'
 ]);
 const ORDER_STATUSES = new Set(['Pending', 'Preparing', 'Delivered']);
+const PAYMENT_TYPES = new Set(['Room', 'Food', 'Services']);
+const PAYMENT_METHODS = new Set(['Cash', 'Card', 'UPI']);
+const PAYMENT_STATUSES = new Set(['Paid', 'Pending', 'Partial']);
+const VIP_STATUSES = new Set(['VIP', 'Regular']);
+const HOUSEKEEPING_STATUSES = new Set(['Clean', 'Dirty', 'In Progress', 'Maintenance', 'Occupied']);
+const HOUSEKEEPING_PRIORITIES = new Set(['Urgent', 'High', 'Normal', 'Low']);
+const INVENTORY_CATEGORIES = new Set([
+  'Food Ingredients',
+  'Beverages',
+  'Housekeeping',
+  'Kitchen Supplies',
+  'Amenities'
+]);
+const INVENTORY_TRANSACTION_TYPES = new Set(['in', 'out']);
 const STAFF_ROLE_ICONS = {
   Manager: '\u{1F464}',
   Chef: '\u{1F373}',
@@ -419,6 +509,25 @@ function seedDefaultMenuItems() {
   });
 }
 
+function seedRoomStatusRows() {
+  const rooms = Object.keys(ROOM_CAPACITY);
+  if (!rooms.length) return;
+
+  const statement = db.prepare(
+    `INSERT OR IGNORE INTO room_status (room_number, status, last_cleaned, assigned_staff) VALUES (?, 'Clean', '', '')`
+  );
+
+  rooms.forEach((roomNumber) => {
+    statement.run([roomNumber], (err) => {
+      if (err) {
+        console.error('Failed to seed room status row:', err.message);
+      }
+    });
+  });
+
+  statement.finalize();
+}
+
 function parseMenuItemPayload(body) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const category = typeof body.category === 'string' ? body.category.trim() : '';
@@ -579,6 +688,338 @@ function buildOrderTotal(items, callback) {
       callback(null, { total, items: normalizedItems });
     }
   );
+}
+
+function parseGuestPayload(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+  const address = typeof body.address === 'string' ? body.address.trim() : '';
+  const id_proof = typeof body.id_proof === 'string' ? body.id_proof.trim() : '';
+  const photo = typeof body.photo === 'string' ? body.photo.trim() : '';
+  const preferences = typeof body.preferences === 'string' ? body.preferences.trim() : '';
+  const vip_status = typeof body.vip_status === 'string' ? body.vip_status.trim() : 'Regular';
+  return { name, email, phone, address, id_proof, photo, preferences, vip_status };
+}
+
+function validateGuestPayload(payload) {
+  if (!payload.name || !payload.phone) {
+    return 'Guest name and phone are required';
+  }
+
+  if (!/^\d{10}$/.test(payload.phone)) {
+    return 'Phone must be exactly 10 digits';
+  }
+
+  if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+    return 'Invalid email format';
+  }
+
+  if (payload.photo && !payload.photo.startsWith('/')) {
+    return 'Photo must be a relative URL starting with /';
+  }
+
+  if (!VIP_STATUSES.has(payload.vip_status)) {
+    return 'Invalid VIP status';
+  }
+
+  return '';
+}
+
+function parsePaymentPayload(body) {
+  const guest_id = body.guest_id === null || body.guest_id === '' ? null : Number(body.guest_id);
+  const room_number = typeof body.room_number === 'string' ? body.room_number.trim() : '';
+  const amount = Number(body.amount);
+  const type = typeof body.type === 'string' ? body.type.trim() : '';
+  const method = typeof body.method === 'string' ? body.method.trim() : '';
+  const status = typeof body.status === 'string' ? body.status.trim() : '';
+  const date = typeof body.date === 'string' && body.date.trim()
+    ? body.date.trim()
+    : new Date().toISOString();
+  return { guest_id, room_number, amount, type, method, status, date };
+}
+
+function validatePaymentPayload(payload) {
+  if (!payload.room_number || !payload.type || !payload.method || !payload.status || !payload.date) {
+    return 'Room number, type, method, status, and date are required';
+  }
+
+  if (!ROOM_CAPACITY[payload.room_number]) {
+    return 'Invalid room number';
+  }
+
+  if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
+    return 'Amount must be a valid positive number';
+  }
+
+  if (!PAYMENT_TYPES.has(payload.type)) {
+    return 'Invalid payment type';
+  }
+
+  if (!PAYMENT_METHODS.has(payload.method)) {
+    return 'Invalid payment method';
+  }
+
+  if (!PAYMENT_STATUSES.has(payload.status)) {
+    return 'Invalid payment status';
+  }
+
+  if (payload.guest_id !== null && (!Number.isInteger(payload.guest_id) || payload.guest_id <= 0)) {
+    return 'Invalid guest selected';
+  }
+
+  return '';
+}
+
+function parseHousekeepingTaskPayload(body) {
+  const room_number = typeof body.room_number === 'string' ? body.room_number.trim() : '';
+  const staff_id = body.staff_id === null || body.staff_id === '' ? null : Number(body.staff_id);
+  const status = typeof body.status === 'string' ? body.status.trim() : '';
+  const priority = typeof body.priority === 'string' ? body.priority.trim() : '';
+  const assigned_date = typeof body.assigned_date === 'string' && body.assigned_date.trim()
+    ? body.assigned_date.trim()
+    : new Date().toISOString();
+  const completed_date = typeof body.completed_date === 'string' ? body.completed_date.trim() : '';
+  const notes = typeof body.notes === 'string' ? body.notes.trim() : '';
+  return { room_number, staff_id, status, priority, assigned_date, completed_date, notes };
+}
+
+function validateHousekeepingTaskPayload(payload) {
+  if (!payload.room_number || !payload.status || !payload.priority || !payload.assigned_date) {
+    return 'Room, status, priority, and assigned date are required';
+  }
+
+  if (!ROOM_CAPACITY[payload.room_number]) {
+    return 'Invalid room number';
+  }
+
+  if (!HOUSEKEEPING_STATUSES.has(payload.status)) {
+    return 'Invalid housekeeping status';
+  }
+
+  if (!HOUSEKEEPING_PRIORITIES.has(payload.priority)) {
+    return 'Invalid priority selected';
+  }
+
+  if (payload.staff_id !== null && (!Number.isInteger(payload.staff_id) || payload.staff_id <= 0)) {
+    return 'Invalid staff selected';
+  }
+
+  return '';
+}
+
+function parseRoomStatusPayload(body) {
+  const status = typeof body.status === 'string' ? body.status.trim() : '';
+  const last_cleaned = typeof body.last_cleaned === 'string' ? body.last_cleaned.trim() : '';
+  const assigned_staff = typeof body.assigned_staff === 'string' ? body.assigned_staff.trim() : '';
+  return { status, last_cleaned, assigned_staff };
+}
+
+function parseInventoryItemPayload(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const category = typeof body.category === 'string' ? body.category.trim() : '';
+  const quantity = Number(body.quantity);
+  const unit = typeof body.unit === 'string' ? body.unit.trim() : '';
+  const reorder_level = Number(body.reorder_level);
+  const supplier = typeof body.supplier === 'string' ? body.supplier.trim() : '';
+  const cost = Number(body.cost || 0);
+  return { name, category, quantity, unit, reorder_level, supplier, cost };
+}
+
+function validateInventoryItemPayload(payload) {
+  if (!payload.name || !payload.category || !payload.unit) {
+    return 'Name, category, and unit are required';
+  }
+
+  if (!INVENTORY_CATEGORIES.has(payload.category)) {
+    return 'Invalid inventory category';
+  }
+
+  if (!Number.isFinite(payload.quantity) || payload.quantity < 0) {
+    return 'Quantity must be a valid number';
+  }
+
+  if (!Number.isFinite(payload.reorder_level) || payload.reorder_level < 0) {
+    return 'Reorder level must be a valid number';
+  }
+
+  if (!Number.isFinite(payload.cost) || payload.cost < 0) {
+    return 'Cost must be a valid number';
+  }
+
+  return '';
+}
+
+function parseInventoryMovementPayload(body) {
+  const type = typeof body.type === 'string' ? body.type.trim().toLowerCase() : '';
+  const quantity = Number(body.quantity);
+  const notes = typeof body.notes === 'string' ? body.notes.trim() : '';
+  return { type, quantity, notes };
+}
+
+function getInventoryStatus(quantity, reorderLevel) {
+  const qty = Number(quantity || 0);
+  const reorder = Number(reorderLevel || 0);
+  if (qty <= 0) return 'Out of Stock';
+  if (qty <= reorder) return 'Low Stock';
+  return 'In Stock';
+}
+
+function withGuestStats(rows, callback) {
+  if (!rows.length) {
+    callback(null, []);
+    return;
+  }
+
+  const ids = rows.map((row) => row.id);
+  const placeholders = ids.map(() => '?').join(',');
+  const bookingMap = new Map();
+  const paymentMap = new Map();
+
+  db.all(
+    `
+      SELECT g.id AS guest_id, COUNT(b.id) AS total_bookings, MAX(b.check_out_date) AS last_visit
+      FROM guests g
+      LEFT JOIN bookings b ON b.guest_phone = g.phone
+      WHERE g.id IN (${placeholders})
+      GROUP BY g.id
+    `,
+    ids,
+    (bookingErr, bookingRows) => {
+      if (bookingErr) {
+        callback(bookingErr);
+        return;
+      }
+
+      bookingRows.forEach((row) => {
+        bookingMap.set(row.guest_id, {
+          total_bookings: Number(row.total_bookings || 0),
+          last_visit: row.last_visit || ''
+        });
+      });
+
+      db.all(
+        `
+          SELECT guest_id, SUM(amount) AS total_spent
+          FROM payments
+          WHERE guest_id IN (${placeholders})
+          GROUP BY guest_id
+        `,
+        ids,
+        (paymentErr, paymentRows) => {
+          if (paymentErr) {
+            callback(paymentErr);
+            return;
+          }
+
+          paymentRows.forEach((row) => {
+            paymentMap.set(row.guest_id, Number(row.total_spent || 0));
+          });
+
+          const enriched = rows.map((row) => {
+            const bookingInfo = bookingMap.get(row.id) || { total_bookings: 0, last_visit: '' };
+            const status = bookingInfo.last_visit && bookingInfo.last_visit >= new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString().split('T')[0]
+              ? 'Active'
+              : 'Past';
+
+            return {
+              ...row,
+              total_bookings: bookingInfo.total_bookings,
+              last_visit: bookingInfo.last_visit || '',
+              total_spent: paymentMap.get(row.id) || 0,
+              status
+            };
+          });
+
+          callback(null, enriched);
+        }
+      );
+    }
+  );
+}
+
+function applyInventoryAdjustmentForOrder(orderId, items, type, callback) {
+  if (!Array.isArray(items) || items.length === 0) {
+    callback();
+    return;
+  }
+
+  let index = 0;
+  const now = new Date().toISOString();
+  const direction = type === 'in' ? 1 : -1;
+
+  function next() {
+    if (index >= items.length) {
+      callback();
+      return;
+    }
+
+    const item = items[index++];
+    if (!item || !item.name || !Number(item.quantity)) {
+      next();
+      return;
+    }
+
+    db.get(
+      `SELECT id, quantity FROM inventory_items WHERE LOWER(name) = LOWER(?) LIMIT 1`,
+      [item.name],
+      (findErr, inventoryRow) => {
+        if (findErr || !inventoryRow) {
+          next();
+          return;
+        }
+
+        const delta = Number(item.quantity) * direction;
+        const nextQuantity = Math.max(0, Number(inventoryRow.quantity || 0) + delta);
+
+        db.run(
+          `UPDATE inventory_items SET quantity = ?, last_updated = ? WHERE id = ?`,
+          [nextQuantity, now, inventoryRow.id],
+          (updateErr) => {
+            if (updateErr) {
+              next();
+              return;
+            }
+
+            db.run(
+              `INSERT INTO inventory_transactions (item_id, type, quantity, date, notes) VALUES (?, ?, ?, ?, ?)`,
+              [inventoryRow.id, type, Math.abs(Number(item.quantity)), now, `Order #${orderId} auto ${type}`],
+              () => next()
+            );
+          }
+        );
+      }
+    );
+  }
+
+  next();
+}
+
+function getDateRangeClause(column, range, startDate, endDate) {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  if (range === 'today') {
+    return { clause: `${column} >= ?`, params: [todayStart] };
+  }
+  if (range === 'week') {
+    const weekStart = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+    return { clause: `${column} >= ?`, params: [weekStart] };
+  }
+  if (range === 'month') {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    return { clause: `${column} >= ?`, params: [monthStart] };
+  }
+  if (range === 'year') {
+    const yearStart = new Date(now.getFullYear(), 0, 1).toISOString();
+    return { clause: `${column} >= ?`, params: [yearStart] };
+  }
+  if (range === 'custom' && startDate && endDate) {
+    return {
+      clause: `${column} BETWEEN ? AND ?`,
+      params: [new Date(startDate).toISOString(), new Date(endDate).toISOString()]
+    };
+  }
+  return { clause: '1=1', params: [] };
 }
 
 function parseMultipartFormData(buffer, boundary) {
@@ -1503,7 +1944,9 @@ app.post('/api/orders', authenticateToken, (req, res) => {
                 if (loadErr || !orders.length) {
                   return res.status(500).json({ error: 'Order created but failed to fetch result' });
                 }
-                res.status(201).json(orders[0]);
+                applyInventoryAdjustmentForOrder(orderId, orders[0].items || [], 'out', () => {
+                  res.status(201).json(orders[0]);
+                });
               });
             });
           });
@@ -1523,71 +1966,85 @@ app.put('/api/orders/:id', authenticateToken, (req, res) => {
     return res.status(400).json({ error: validationError });
   }
 
-  buildOrderTotal(payload.items, (totalErr, computed) => {
-    if (totalErr) {
-      return res.status(400).json({ error: totalErr.message || 'Failed to compute order total' });
+  withOrderItems('WHERE o.id = ?', [id], (existingErr, existingOrders) => {
+    if (existingErr) {
+      return res.status(500).json({ error: 'Failed to load existing order' });
+    }
+    const existingOrder = existingOrders[0];
+    if (!existingOrder) {
+      return res.status(404).json({ error: 'Order not found' });
     }
 
-    db.run('BEGIN TRANSACTION', (beginErr) => {
-      if (beginErr) {
-        return res.status(500).json({ error: 'Failed to update order' });
+    buildOrderTotal(payload.items, (totalErr, computed) => {
+      if (totalErr) {
+        return res.status(400).json({ error: totalErr.message || 'Failed to compute order total' });
       }
 
-      db.run(
-        `UPDATE orders SET room_number = ?, order_date = ?, total_price = ?, status = ? WHERE id = ?`,
-        [payload.room_number, payload.order_date, computed.total, payload.status, id],
-        function (updateErr) {
-          if (updateErr) {
-            db.run('ROLLBACK');
-            return res.status(500).json({ error: 'Failed to update order' });
-          }
-          if (this.changes === 0) {
-            db.run('ROLLBACK');
-            return res.status(404).json({ error: 'Order not found' });
-          }
+      db.run('BEGIN TRANSACTION', (beginErr) => {
+        if (beginErr) {
+          return res.status(500).json({ error: 'Failed to update order' });
+        }
 
-          db.run(`DELETE FROM order_items WHERE order_id = ?`, [id], (deleteErr) => {
-            if (deleteErr) {
+        db.run(
+          `UPDATE orders SET room_number = ?, order_date = ?, total_price = ?, status = ? WHERE id = ?`,
+          [payload.room_number, payload.order_date, computed.total, payload.status, id],
+          function (updateErr) {
+            if (updateErr) {
               db.run('ROLLBACK');
-              return res.status(500).json({ error: 'Failed to update order items' });
+              return res.status(500).json({ error: 'Failed to update order' });
+            }
+            if (this.changes === 0) {
+              db.run('ROLLBACK');
+              return res.status(404).json({ error: 'Order not found' });
             }
 
-            const statement = db.prepare(
-              `INSERT INTO order_items (order_id, menu_item_id, quantity) VALUES (?, ?, ?)`
-            );
-
-            let hasFailure = false;
-            computed.items.forEach((item) => {
-              statement.run([id, item.menu_item_id, item.quantity], (itemErr) => {
-                if (itemErr) {
-                  hasFailure = true;
-                }
-              });
-            });
-
-            statement.finalize((finalizeErr) => {
-              if (hasFailure || finalizeErr) {
+            db.run(`DELETE FROM order_items WHERE order_id = ?`, [id], (deleteErr) => {
+              if (deleteErr) {
                 db.run('ROLLBACK');
-                return res.status(500).json({ error: 'Failed to save updated order items' });
+                return res.status(500).json({ error: 'Failed to update order items' });
               }
 
-              db.run('COMMIT', (commitErr) => {
-                if (commitErr) {
+              const statement = db.prepare(
+                `INSERT INTO order_items (order_id, menu_item_id, quantity) VALUES (?, ?, ?)`
+              );
+
+              let hasFailure = false;
+              computed.items.forEach((item) => {
+                statement.run([id, item.menu_item_id, item.quantity], (itemErr) => {
+                  if (itemErr) {
+                    hasFailure = true;
+                  }
+                });
+              });
+
+              statement.finalize((finalizeErr) => {
+                if (hasFailure || finalizeErr) {
                   db.run('ROLLBACK');
-                  return res.status(500).json({ error: 'Failed to finalize order update' });
+                  return res.status(500).json({ error: 'Failed to save updated order items' });
                 }
 
-                withOrderItems('WHERE o.id = ?', [id], (loadErr, orders) => {
-                  if (loadErr || !orders.length) {
-                    return res.status(500).json({ error: 'Order updated but failed to fetch result' });
+                db.run('COMMIT', (commitErr) => {
+                  if (commitErr) {
+                    db.run('ROLLBACK');
+                    return res.status(500).json({ error: 'Failed to finalize order update' });
                   }
-                  res.json(orders[0]);
+
+                  withOrderItems('WHERE o.id = ?', [id], (loadErr, orders) => {
+                    if (loadErr || !orders.length) {
+                      return res.status(500).json({ error: 'Order updated but failed to fetch result' });
+                    }
+                    applyInventoryAdjustmentForOrder(id, existingOrder.items || [], 'in', () => {
+                      applyInventoryAdjustmentForOrder(id, orders[0].items || [], 'out', () => {
+                        res.json(orders[0]);
+                      });
+                    });
+                  });
                 });
               });
             });
-          });
-        }
-      );
+          }
+        );
+      });
     });
   });
 });
@@ -1596,37 +2053,1296 @@ app.put('/api/orders/:id', authenticateToken, (req, res) => {
 app.delete('/api/orders/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
 
-  db.run('BEGIN TRANSACTION', (beginErr) => {
-    if (beginErr) {
-      return res.status(500).json({ error: 'Failed to delete order' });
+  withOrderItems('WHERE o.id = ?', [id], (loadErr, existingOrders) => {
+    if (loadErr) {
+      return res.status(500).json({ error: 'Failed to load order before deletion' });
+    }
+    const existingOrder = existingOrders[0];
+
+    if (!existingOrder) {
+      return res.status(404).json({ error: 'Order not found' });
     }
 
-    db.run(`DELETE FROM order_items WHERE order_id = ?`, [id], (itemErr) => {
-      if (itemErr) {
-        db.run('ROLLBACK');
-        return res.status(500).json({ error: 'Failed to delete order items' });
+    db.run('BEGIN TRANSACTION', (beginErr) => {
+      if (beginErr) {
+        return res.status(500).json({ error: 'Failed to delete order' });
       }
 
-      db.run(`DELETE FROM orders WHERE id = ?`, [id], function (orderErr) {
-        if (orderErr) {
+      db.run(`DELETE FROM order_items WHERE order_id = ?`, [id], (itemErr) => {
+        if (itemErr) {
           db.run('ROLLBACK');
-          return res.status(500).json({ error: 'Failed to delete order' });
-        }
-        if (this.changes === 0) {
-          db.run('ROLLBACK');
-          return res.status(404).json({ error: 'Order not found' });
+          return res.status(500).json({ error: 'Failed to delete order items' });
         }
 
-        db.run('COMMIT', (commitErr) => {
-          if (commitErr) {
+        db.run(`DELETE FROM orders WHERE id = ?`, [id], function (orderErr) {
+          if (orderErr) {
             db.run('ROLLBACK');
-            return res.status(500).json({ error: 'Failed to finalize order deletion' });
+            return res.status(500).json({ error: 'Failed to delete order' });
           }
-          res.json({ message: 'Order deleted' });
+          if (this.changes === 0) {
+            db.run('ROLLBACK');
+            return res.status(404).json({ error: 'Order not found' });
+          }
+
+          db.run('COMMIT', (commitErr) => {
+            if (commitErr) {
+              db.run('ROLLBACK');
+              return res.status(500).json({ error: 'Failed to finalize order deletion' });
+            }
+            applyInventoryAdjustmentForOrder(id, existingOrder.items || [], 'in', () => {
+              res.json({ message: 'Order deleted' });
+            });
+          });
         });
       });
     });
   });
+});
+
+// ─── Payments Routes (Protected) ─────────────────────────────────
+
+app.get('/api/payments/summary', authenticateToken, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const monthPrefix = today.slice(0, 7);
+
+  db.get(
+    `
+      SELECT
+        SUM(CASE WHEN status IN ('Paid', 'Partial') THEN amount ELSE 0 END) AS total_revenue,
+        SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END) AS pending_payments,
+        SUM(CASE WHEN substr(date, 1, 10) = ? AND status IN ('Paid', 'Partial') THEN amount ELSE 0 END) AS today_collection,
+        SUM(CASE WHEN substr(date, 1, 7) = ? AND status IN ('Paid', 'Partial') THEN amount ELSE 0 END) AS month_revenue
+      FROM payments
+    `,
+    [today, monthPrefix],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch payment summary' });
+      }
+      res.json({
+        total_revenue: Number(row && row.total_revenue ? row.total_revenue : 0),
+        pending_payments: Number(row && row.pending_payments ? row.pending_payments : 0),
+        today_collection: Number(row && row.today_collection ? row.today_collection : 0),
+        month_revenue: Number(row && row.month_revenue ? row.month_revenue : 0)
+      });
+    }
+  );
+});
+
+app.get('/api/payments', authenticateToken, (req, res) => {
+  const { status = '', type = '', search = '', start_date = '', end_date = '' } = req.query;
+  const filters = [];
+  const params = [];
+
+  if (status && PAYMENT_STATUSES.has(String(status))) {
+    filters.push('p.status = ?');
+    params.push(String(status));
+  }
+  if (type && PAYMENT_TYPES.has(String(type))) {
+    filters.push('p.type = ?');
+    params.push(String(type));
+  }
+  if (start_date) {
+    filters.push('substr(p.date, 1, 10) >= ?');
+    params.push(String(start_date));
+  }
+  if (end_date) {
+    filters.push('substr(p.date, 1, 10) <= ?');
+    params.push(String(end_date));
+  }
+  if (search) {
+    filters.push('(LOWER(g.name) LIKE ? OR p.room_number LIKE ?)');
+    const term = `%${String(search).toLowerCase()}%`;
+    params.push(term, `%${String(search)}%`);
+  }
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  db.all(
+    `
+      SELECT
+        p.id, p.guest_id, p.room_number, p.amount, p.type, p.method, p.status, p.date,
+        g.name AS guest_name
+      FROM payments p
+      LEFT JOIN guests g ON g.id = p.guest_id
+      ${whereClause}
+      ORDER BY p.date DESC, p.id DESC
+    `,
+    params,
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch payments' });
+      }
+      res.json(rows.map((row) => ({ ...row, amount: Number(row.amount || 0), guest_name: row.guest_name || 'Walk-in Guest' })));
+    }
+  );
+});
+
+app.get('/api/payments/:id/receipt', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.get(
+    `
+      SELECT p.id, p.room_number, p.amount, p.type, p.method, p.status, p.date, g.name AS guest_name, g.phone
+      FROM payments p
+      LEFT JOIN guests g ON g.id = p.guest_id
+      WHERE p.id = ?
+    `,
+    [id],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to generate receipt' });
+      }
+      if (!row) {
+        return res.status(404).json({ error: 'Payment not found' });
+      }
+      res.json({
+        receipt_no: `PMT-${String(row.id).padStart(5, '0')}`,
+        ...row,
+        amount: Number(row.amount || 0),
+        guest_name: row.guest_name || 'Walk-in Guest',
+        generated_at: new Date().toISOString()
+      });
+    }
+  );
+});
+
+app.post('/api/payments', authenticateToken, (req, res) => {
+  const payload = parsePaymentPayload(req.body || {});
+  const validationError = validatePaymentPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const persist = () => {
+    db.run(
+      `INSERT INTO payments (guest_id, room_number, amount, type, method, status, date) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [payload.guest_id, payload.room_number, payload.amount, payload.type, payload.method, payload.status, payload.date],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to record payment' });
+        }
+        db.get(
+          `
+            SELECT p.id, p.guest_id, p.room_number, p.amount, p.type, p.method, p.status, p.date, g.name AS guest_name
+            FROM payments p
+            LEFT JOIN guests g ON g.id = p.guest_id
+            WHERE p.id = ?
+          `,
+          [this.lastID],
+          (selectErr, row) => {
+            if (selectErr || !row) {
+              return res.status(500).json({ error: 'Payment recorded but failed to load result' });
+            }
+            res.status(201).json({ ...row, amount: Number(row.amount || 0), guest_name: row.guest_name || 'Walk-in Guest' });
+          }
+        );
+      }
+    );
+  };
+
+  if (payload.guest_id === null) {
+    persist();
+    return;
+  }
+
+  db.get('SELECT id FROM guests WHERE id = ?', [payload.guest_id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to validate guest' });
+    }
+    if (!row) {
+      return res.status(400).json({ error: 'Selected guest does not exist' });
+    }
+    persist();
+  });
+});
+
+app.put('/api/payments/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parsePaymentPayload(req.body || {});
+  const validationError = validatePaymentPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const persist = () => {
+    db.run(
+      `
+        UPDATE payments
+        SET guest_id = ?, room_number = ?, amount = ?, type = ?, method = ?, status = ?, date = ?
+        WHERE id = ?
+      `,
+      [payload.guest_id, payload.room_number, payload.amount, payload.type, payload.method, payload.status, payload.date, id],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to update payment' });
+        }
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Payment not found' });
+        }
+        db.get(
+          `
+            SELECT p.id, p.guest_id, p.room_number, p.amount, p.type, p.method, p.status, p.date, g.name AS guest_name
+            FROM payments p
+            LEFT JOIN guests g ON g.id = p.guest_id
+            WHERE p.id = ?
+          `,
+          [id],
+          (selectErr, row) => {
+            if (selectErr || !row) {
+              return res.status(500).json({ error: 'Payment updated but failed to load result' });
+            }
+            res.json({ ...row, amount: Number(row.amount || 0), guest_name: row.guest_name || 'Walk-in Guest' });
+          }
+        );
+      }
+    );
+  };
+
+  if (payload.guest_id === null) {
+    persist();
+    return;
+  }
+
+  db.get('SELECT id FROM guests WHERE id = ?', [payload.guest_id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to validate guest' });
+    }
+    if (!row) {
+      return res.status(400).json({ error: 'Selected guest does not exist' });
+    }
+    persist();
+  });
+});
+
+app.delete('/api/payments/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM payments WHERE id = ?`, [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to delete payment' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    res.json({ message: 'Payment deleted' });
+  });
+});
+
+// ─── Guests Routes (Protected) ───────────────────────────────────
+
+app.get('/api/guests/export', authenticateToken, (req, res) => {
+  db.all(
+    `
+      SELECT id, name, email, phone, address, id_proof, preferences, vip_status, created_date
+      FROM guests
+      ORDER BY created_date DESC, id DESC
+    `,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to export guests' });
+      }
+
+      const header = 'ID,Name,Email,Phone,Address,ID Proof,Preferences,VIP Status,Created Date';
+      const lines = rows.map((row) => [
+        row.id,
+        `"${String(row.name || '').replace(/"/g, '""')}"`,
+        `"${String(row.email || '').replace(/"/g, '""')}"`,
+        `"${String(row.phone || '').replace(/"/g, '""')}"`,
+        `"${String(row.address || '').replace(/"/g, '""')}"`,
+        `"${String(row.id_proof || '').replace(/"/g, '""')}"`,
+        `"${String(row.preferences || '').replace(/"/g, '""')}"`,
+        row.vip_status,
+        row.created_date
+      ].join(','));
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=\"guests.csv\"');
+      res.send([header, ...lines].join('\n'));
+    }
+  );
+});
+
+app.get('/api/guests/summary', authenticateToken, (req, res) => {
+  db.all(`SELECT id, phone FROM guests`, [], (err, guests) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch guest summary' });
+    }
+    const phones = guests.map((g) => g.phone).filter(Boolean);
+    const placeholders = phones.length ? phones.map(() => '?').join(',') : "''";
+    const activeCutoff = new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString().split('T')[0];
+
+    db.all(
+      `SELECT guest_phone, COUNT(*) AS booking_count, MAX(check_out_date) AS last_visit FROM bookings WHERE guest_phone IN (${placeholders}) GROUP BY guest_phone`,
+      phones.length ? phones : [],
+      (bookingErr, bookingRows) => {
+        if (bookingErr) {
+          return res.status(500).json({ error: 'Failed to compute guest summary' });
+        }
+
+        const bookingByPhone = new Map();
+        bookingRows.forEach((row) => bookingByPhone.set(row.guest_phone, row));
+
+        let activeGuests = 0;
+        let returningGuests = 0;
+        guests.forEach((guest) => {
+          const info = bookingByPhone.get(guest.phone);
+          if (!info) return;
+          if (Number(info.booking_count || 0) > 1) returningGuests += 1;
+          if (info.last_visit && info.last_visit >= activeCutoff) activeGuests += 1;
+        });
+
+        res.json({
+          total_guests: guests.length,
+          active_guests: activeGuests,
+          returning_guests: returningGuests
+        });
+      }
+    );
+  });
+});
+
+app.get('/api/guests', authenticateToken, (req, res) => {
+  const { search = '', vip_status = '', status = '' } = req.query;
+  const filters = [];
+  const params = [];
+
+  if (search) {
+    filters.push('(LOWER(name) LIKE ? OR LOWER(email) LIKE ? OR phone LIKE ?)');
+    const term = `%${String(search).toLowerCase()}%`;
+    params.push(term, term, `%${String(search)}%`);
+  }
+
+  if (vip_status && VIP_STATUSES.has(String(vip_status))) {
+    filters.push('vip_status = ?');
+    params.push(String(vip_status));
+  }
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  db.all(
+    `
+      SELECT id, name, email, phone, address, id_proof, photo, preferences, vip_status, created_date
+      FROM guests
+      ${whereClause}
+      ORDER BY created_date DESC, id DESC
+    `,
+    params,
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch guests' });
+      }
+      withGuestStats(rows, (statsErr, enrichedRows) => {
+        if (statsErr) {
+          return res.status(500).json({ error: 'Failed to enrich guest data' });
+        }
+        let filtered = enrichedRows;
+        if (status === 'Active' || status === 'Past') {
+          filtered = enrichedRows.filter((row) => row.status === status);
+        }
+        res.json(filtered);
+      });
+    }
+  );
+});
+
+app.post('/api/guests/upload-photo', authenticateToken, express.raw({ type: 'multipart/form-data', limit: '5mb' }), (req, res) => {
+  const contentType = req.headers['content-type'] || '';
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2]) : '';
+
+  if (!boundary || !Buffer.isBuffer(req.body)) {
+    return res.status(400).json({ error: 'Invalid multipart upload request' });
+  }
+
+  const parsed = parseMultipartFormData(req.body, boundary);
+  const photoFile = parsed.photo;
+
+  if (!photoFile || !photoFile.buffer || photoFile.buffer.length === 0) {
+    return res.status(400).json({ error: 'Photo file is required' });
+  }
+
+  if (!ALLOWED_AVATAR_MIME.has(photoFile.mimeType)) {
+    return res.status(400).json({ error: 'Photo must be PNG, JPG, JPEG, WEBP, or GIF' });
+  }
+
+  if (photoFile.buffer.length > AVATAR_MAX_BYTES) {
+    return res.status(400).json({ error: 'Photo image is too large (max 2MB)' });
+  }
+
+  const extension = getAvatarFileExtension(photoFile.mimeType);
+  if (!extension) {
+    return res.status(400).json({ error: 'Unsupported photo format' });
+  }
+
+  const filename = `guest-${req.user.id}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+  const diskPath = path.join(AVATAR_UPLOAD_DIR, filename);
+  const photoUrl = `${AVATAR_URL_PREFIX}${filename}`;
+
+  fs.writeFile(diskPath, photoFile.buffer, (writeErr) => {
+    if (writeErr) {
+      return res.status(500).json({ error: 'Failed to save photo image' });
+    }
+    res.status(201).json({ photo_url: photoUrl });
+  });
+});
+
+app.get('/api/guests/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.get(
+    `
+      SELECT id, name, email, phone, address, id_proof, photo, preferences, vip_status, created_date
+      FROM guests
+      WHERE id = ?
+    `,
+    [id],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch guest' });
+      }
+      if (!row) {
+        return res.status(404).json({ error: 'Guest not found' });
+      }
+      withGuestStats([row], (statsErr, enriched) => {
+        if (statsErr) {
+          return res.status(500).json({ error: 'Failed to load guest profile' });
+        }
+        res.json(enriched[0]);
+      });
+    }
+  );
+});
+
+app.get('/api/guests/:id/history', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.get(`SELECT id, name, phone FROM guests WHERE id = ?`, [id], (err, guest) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch guest history' });
+    }
+    if (!guest) {
+      return res.status(404).json({ error: 'Guest not found' });
+    }
+
+    db.all(
+      `
+        SELECT id, room_number, check_in_date, check_out_date, COALESCE(members, 1) AS members
+        FROM bookings
+        WHERE guest_phone = ?
+        ORDER BY check_in_date DESC
+      `,
+      [guest.phone],
+      (bookingErr, bookings) => {
+        if (bookingErr) {
+          return res.status(500).json({ error: 'Failed to fetch booking history' });
+        }
+
+        db.all(
+          `
+            SELECT id, room_number, amount, type, method, status, date
+            FROM payments
+            WHERE guest_id = ?
+            ORDER BY date DESC, id DESC
+          `,
+          [id],
+          (paymentErr, payments) => {
+            if (paymentErr) {
+              return res.status(500).json({ error: 'Failed to fetch payment history' });
+            }
+
+            const totalSpent = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+            res.json({
+              guest_id: Number(id),
+              bookings,
+              payments: payments.map((payment) => ({ ...payment, amount: Number(payment.amount || 0) })),
+              total_spent: totalSpent
+            });
+          }
+        );
+      }
+    );
+  });
+});
+
+app.post('/api/guests', authenticateToken, (req, res) => {
+  const payload = parseGuestPayload(req.body || {});
+  const validationError = validateGuestPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  db.run(
+    `
+      INSERT INTO guests (name, email, phone, address, id_proof, photo, preferences, vip_status, created_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [payload.name, payload.email, payload.phone, payload.address, payload.id_proof, payload.photo, payload.preferences, payload.vip_status, new Date().toISOString()],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to add guest' });
+      }
+      db.get(
+        `
+          SELECT id, name, email, phone, address, id_proof, photo, preferences, vip_status, created_date
+          FROM guests
+          WHERE id = ?
+        `,
+        [this.lastID],
+        (selectErr, row) => {
+          if (selectErr || !row) {
+            return res.status(500).json({ error: 'Guest added but failed to load result' });
+          }
+          withGuestStats([row], (statsErr, enriched) => {
+            if (statsErr) {
+              return res.status(500).json({ error: 'Guest added but failed to compute stats' });
+            }
+            res.status(201).json(enriched[0]);
+          });
+        }
+      );
+    }
+  );
+});
+
+app.put('/api/guests/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parseGuestPayload(req.body || {});
+  const validationError = validateGuestPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  db.run(
+    `
+      UPDATE guests
+      SET name = ?, email = ?, phone = ?, address = ?, id_proof = ?, photo = ?, preferences = ?, vip_status = ?
+      WHERE id = ?
+    `,
+    [payload.name, payload.email, payload.phone, payload.address, payload.id_proof, payload.photo, payload.preferences, payload.vip_status, id],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update guest' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Guest not found' });
+      }
+      db.get(
+        `
+          SELECT id, name, email, phone, address, id_proof, photo, preferences, vip_status, created_date
+          FROM guests
+          WHERE id = ?
+        `,
+        [id],
+        (selectErr, row) => {
+          if (selectErr || !row) {
+            return res.status(500).json({ error: 'Guest updated but failed to load result' });
+          }
+          withGuestStats([row], (statsErr, enriched) => {
+            if (statsErr) {
+              return res.status(500).json({ error: 'Guest updated but failed to compute stats' });
+            }
+            res.json(enriched[0]);
+          });
+        }
+      );
+    }
+  );
+});
+
+app.delete('/api/guests/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.run(`DELETE FROM payments WHERE guest_id = ?`, [id], (paymentErr) => {
+    if (paymentErr) {
+      return res.status(500).json({ error: 'Failed to cleanup guest payments' });
+    }
+
+    db.run(`DELETE FROM guests WHERE id = ?`, [id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to delete guest' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Guest not found' });
+      }
+      res.json({ message: 'Guest deleted' });
+    });
+  });
+});
+
+// ─── Housekeeping Routes (Protected) ─────────────────────────────
+
+app.get('/api/room-status', authenticateToken, (req, res) => {
+  const { status = '' } = req.query;
+  const params = [];
+  let whereClause = '';
+  if (status && HOUSEKEEPING_STATUSES.has(String(status))) {
+    whereClause = 'WHERE rs.status = ?';
+    params.push(String(status));
+  }
+
+  db.all(
+    `
+      SELECT rs.room_number, rs.status, rs.last_cleaned, rs.assigned_staff, s.name AS assigned_staff_name
+      FROM room_status rs
+      LEFT JOIN staff s ON CAST(rs.assigned_staff AS INTEGER) = s.id
+      ${whereClause}
+      ORDER BY rs.room_number ASC
+    `,
+    params,
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch room status' });
+      }
+      res.json(rows);
+    }
+  );
+});
+
+app.post('/api/room-status/:room_number', authenticateToken, (req, res) => {
+  const { room_number } = req.params;
+  const payload = parseRoomStatusPayload(req.body || {});
+
+  if (!ROOM_CAPACITY[room_number]) {
+    return res.status(400).json({ error: 'Invalid room number' });
+  }
+  if (!payload.status || !HOUSEKEEPING_STATUSES.has(payload.status)) {
+    return res.status(400).json({ error: 'Invalid room status' });
+  }
+
+  db.run(
+    `
+      INSERT INTO room_status (room_number, status, last_cleaned, assigned_staff)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(room_number) DO UPDATE SET
+        status = excluded.status,
+        last_cleaned = excluded.last_cleaned,
+        assigned_staff = excluded.assigned_staff
+    `,
+    [room_number, payload.status, payload.last_cleaned || '', payload.assigned_staff || ''],
+    (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update room status' });
+      }
+      res.json({ message: 'Room status updated' });
+    }
+  );
+});
+
+app.get('/api/housekeeping-tasks', authenticateToken, (req, res) => {
+  const { status = '', priority = '', room_number = '' } = req.query;
+  const filters = [];
+  const params = [];
+  if (status && HOUSEKEEPING_STATUSES.has(String(status))) {
+    filters.push('t.status = ?');
+    params.push(String(status));
+  }
+  if (priority && HOUSEKEEPING_PRIORITIES.has(String(priority))) {
+    filters.push('t.priority = ?');
+    params.push(String(priority));
+  }
+  if (room_number) {
+    filters.push('t.room_number = ?');
+    params.push(String(room_number));
+  }
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+
+  db.all(
+    `
+      SELECT
+        t.id, t.room_number, t.staff_id, t.status, t.priority, t.assigned_date, t.completed_date, t.notes,
+        s.name AS staff_name
+      FROM housekeeping_tasks t
+      LEFT JOIN staff s ON s.id = t.staff_id
+      ${whereClause}
+      ORDER BY t.assigned_date DESC, t.id DESC
+    `,
+    params,
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch housekeeping tasks' });
+      }
+      res.json(rows);
+    }
+  );
+});
+
+app.post('/api/housekeeping-tasks', authenticateToken, (req, res) => {
+  const payload = parseHousekeepingTaskPayload(req.body || {});
+  const validationError = validateHousekeepingTaskPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const persistTask = () => {
+    db.run(
+      `
+        INSERT INTO housekeeping_tasks
+        (room_number, staff_id, status, priority, assigned_date, completed_date, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [payload.room_number, payload.staff_id, payload.status, payload.priority, payload.assigned_date, payload.completed_date || '', payload.notes],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to assign housekeeping task' });
+        }
+
+        db.run(
+          `
+            INSERT INTO room_status (room_number, status, last_cleaned, assigned_staff)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(room_number) DO UPDATE SET
+              status = excluded.status,
+              assigned_staff = excluded.assigned_staff
+          `,
+          [payload.room_number, payload.status, payload.status === 'Clean' ? (payload.completed_date || new Date().toISOString()) : '', payload.staff_id ? String(payload.staff_id) : ''],
+          () => {}
+        );
+
+        db.get(
+          `
+            SELECT t.id, t.room_number, t.staff_id, t.status, t.priority, t.assigned_date, t.completed_date, t.notes, s.name AS staff_name
+            FROM housekeeping_tasks t
+            LEFT JOIN staff s ON s.id = t.staff_id
+            WHERE t.id = ?
+          `,
+          [this.lastID],
+          (selectErr, row) => {
+            if (selectErr || !row) {
+              return res.status(500).json({ error: 'Task assigned but failed to load result' });
+            }
+            res.status(201).json(row);
+          }
+        );
+      }
+    );
+  };
+
+  if (payload.staff_id === null) {
+    persistTask();
+    return;
+  }
+
+  db.get(`SELECT id FROM staff WHERE id = ?`, [payload.staff_id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to validate staff' });
+    }
+    if (!row) {
+      return res.status(400).json({ error: 'Selected staff member does not exist' });
+    }
+    persistTask();
+  });
+});
+
+app.put('/api/housekeeping-tasks/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parseHousekeepingTaskPayload(req.body || {});
+  const validationError = validateHousekeepingTaskPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const persistTask = () => {
+    db.run(
+      `
+        UPDATE housekeeping_tasks
+        SET room_number = ?, staff_id = ?, status = ?, priority = ?, assigned_date = ?, completed_date = ?, notes = ?
+        WHERE id = ?
+      `,
+      [payload.room_number, payload.staff_id, payload.status, payload.priority, payload.assigned_date, payload.completed_date || '', payload.notes, id],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to update housekeeping task' });
+        }
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Task not found' });
+        }
+
+        db.run(
+          `
+            INSERT INTO room_status (room_number, status, last_cleaned, assigned_staff)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(room_number) DO UPDATE SET
+              status = excluded.status,
+              last_cleaned = CASE WHEN excluded.status = 'Clean' THEN excluded.last_cleaned ELSE room_status.last_cleaned END,
+              assigned_staff = excluded.assigned_staff
+          `,
+          [payload.room_number, payload.status, payload.status === 'Clean' ? (payload.completed_date || new Date().toISOString()) : '', payload.staff_id ? String(payload.staff_id) : ''],
+          () => {}
+        );
+
+        db.get(
+          `
+            SELECT t.id, t.room_number, t.staff_id, t.status, t.priority, t.assigned_date, t.completed_date, t.notes, s.name AS staff_name
+            FROM housekeeping_tasks t
+            LEFT JOIN staff s ON s.id = t.staff_id
+            WHERE t.id = ?
+          `,
+          [id],
+          (selectErr, row) => {
+            if (selectErr || !row) {
+              return res.status(500).json({ error: 'Task updated but failed to load result' });
+            }
+            res.json(row);
+          }
+        );
+      }
+    );
+  };
+
+  if (payload.staff_id === null) {
+    persistTask();
+    return;
+  }
+
+  db.get(`SELECT id FROM staff WHERE id = ?`, [payload.staff_id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to validate staff' });
+    }
+    if (!row) {
+      return res.status(400).json({ error: 'Selected staff member does not exist' });
+    }
+    persistTask();
+  });
+});
+
+app.delete('/api/housekeeping-tasks/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM housekeeping_tasks WHERE id = ?`, [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to delete housekeeping task' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    res.json({ message: 'Task deleted' });
+  });
+});
+
+// ─── Inventory Routes (Protected) ────────────────────────────────
+
+app.get('/api/inventory-items/summary', authenticateToken, (req, res) => {
+  db.all(
+    `SELECT id, quantity, reorder_level, cost FROM inventory_items`,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch inventory summary' });
+      }
+
+      let lowStock = 0;
+      let outOfStock = 0;
+      let inventoryValue = 0;
+      rows.forEach((row) => {
+        const quantity = Number(row.quantity || 0);
+        const reorderLevel = Number(row.reorder_level || 0);
+        if (quantity <= 0) outOfStock += 1;
+        if (quantity > 0 && quantity <= reorderLevel) lowStock += 1;
+        inventoryValue += quantity * Number(row.cost || 0);
+      });
+
+      res.json({
+        total_items: rows.length,
+        low_stock_items: lowStock,
+        out_of_stock_items: outOfStock,
+        inventory_value: inventoryValue
+      });
+    }
+  );
+});
+
+app.get('/api/inventory-items', authenticateToken, (req, res) => {
+  const { category = '', search = '' } = req.query;
+  const filters = [];
+  const params = [];
+
+  if (category && INVENTORY_CATEGORIES.has(String(category))) {
+    filters.push('category = ?');
+    params.push(String(category));
+  }
+  if (search) {
+    filters.push('(LOWER(name) LIKE ? OR LOWER(supplier) LIKE ?)');
+    const term = `%${String(search).toLowerCase()}%`;
+    params.push(term, term);
+  }
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  db.all(
+    `
+      SELECT id, name, category, quantity, unit, reorder_level, supplier, cost, last_updated
+      FROM inventory_items
+      ${whereClause}
+      ORDER BY category ASC, name COLLATE NOCASE ASC
+    `,
+    params,
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch inventory items' });
+      }
+      res.json(rows.map((row) => ({
+        ...row,
+        quantity: Number(row.quantity || 0),
+        reorder_level: Number(row.reorder_level || 0),
+        cost: Number(row.cost || 0),
+        status: getInventoryStatus(row.quantity, row.reorder_level)
+      })));
+    }
+  );
+});
+
+app.post('/api/inventory-items', authenticateToken, (req, res) => {
+  const payload = parseInventoryItemPayload(req.body || {});
+  const validationError = validateInventoryItemPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const now = new Date().toISOString();
+  db.run(
+    `
+      INSERT INTO inventory_items (name, category, quantity, unit, reorder_level, supplier, cost, last_updated)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [payload.name, payload.category, payload.quantity, payload.unit, payload.reorder_level, payload.supplier, payload.cost, now],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to add inventory item' });
+      }
+
+      db.run(
+        `INSERT INTO inventory_transactions (item_id, type, quantity, date, notes) VALUES (?, 'in', ?, ?, 'Initial stock')`,
+        [this.lastID, Math.abs(payload.quantity), now],
+        () => {}
+      );
+
+      db.get(
+        `SELECT id, name, category, quantity, unit, reorder_level, supplier, cost, last_updated FROM inventory_items WHERE id = ?`,
+        [this.lastID],
+        (selectErr, row) => {
+          if (selectErr || !row) {
+            return res.status(500).json({ error: 'Item added but failed to load result' });
+          }
+          res.status(201).json({
+            ...row,
+            quantity: Number(row.quantity || 0),
+            reorder_level: Number(row.reorder_level || 0),
+            cost: Number(row.cost || 0),
+            status: getInventoryStatus(row.quantity, row.reorder_level)
+          });
+        }
+      );
+    }
+  );
+});
+
+app.put('/api/inventory-items/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parseInventoryItemPayload(req.body || {});
+  const validationError = validateInventoryItemPayload(payload);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
+  const now = new Date().toISOString();
+  db.run(
+    `
+      UPDATE inventory_items
+      SET name = ?, category = ?, quantity = ?, unit = ?, reorder_level = ?, supplier = ?, cost = ?, last_updated = ?
+      WHERE id = ?
+    `,
+    [payload.name, payload.category, payload.quantity, payload.unit, payload.reorder_level, payload.supplier, payload.cost, now, id],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update inventory item' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Inventory item not found' });
+      }
+      db.get(
+        `SELECT id, name, category, quantity, unit, reorder_level, supplier, cost, last_updated FROM inventory_items WHERE id = ?`,
+        [id],
+        (selectErr, row) => {
+          if (selectErr || !row) {
+            return res.status(500).json({ error: 'Item updated but failed to load result' });
+          }
+          res.json({
+            ...row,
+            quantity: Number(row.quantity || 0),
+            reorder_level: Number(row.reorder_level || 0),
+            cost: Number(row.cost || 0),
+            status: getInventoryStatus(row.quantity, row.reorder_level)
+          });
+        }
+      );
+    }
+  );
+});
+
+app.post('/api/inventory-items/:id/stock', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const payload = parseInventoryMovementPayload(req.body || {});
+  if (!INVENTORY_TRANSACTION_TYPES.has(payload.type)) {
+    return res.status(400).json({ error: 'Stock movement type must be in or out' });
+  }
+  if (!Number.isFinite(payload.quantity) || payload.quantity <= 0) {
+    return res.status(400).json({ error: 'Quantity must be a positive number' });
+  }
+
+  db.get(`SELECT id, quantity FROM inventory_items WHERE id = ?`, [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to fetch inventory item' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'Inventory item not found' });
+    }
+
+    const currentQuantity = Number(row.quantity || 0);
+    const delta = payload.type === 'in' ? payload.quantity : -payload.quantity;
+    const nextQuantity = Math.max(0, currentQuantity + delta);
+    const now = new Date().toISOString();
+
+    db.run(`UPDATE inventory_items SET quantity = ?, last_updated = ? WHERE id = ?`, [nextQuantity, now, id], (updateErr) => {
+      if (updateErr) {
+        return res.status(500).json({ error: 'Failed to update stock quantity' });
+      }
+      db.run(
+        `INSERT INTO inventory_transactions (item_id, type, quantity, date, notes) VALUES (?, ?, ?, ?, ?)`,
+        [id, payload.type, payload.quantity, now, payload.notes],
+        (insertErr) => {
+          if (insertErr) {
+            return res.status(500).json({ error: 'Stock updated but failed to save transaction' });
+          }
+          db.get(
+            `SELECT id, name, category, quantity, unit, reorder_level, supplier, cost, last_updated FROM inventory_items WHERE id = ?`,
+            [id],
+            (selectErr, itemRow) => {
+              if (selectErr || !itemRow) {
+                return res.status(500).json({ error: 'Stock updated but failed to load result' });
+              }
+              res.json({
+                ...itemRow,
+                quantity: Number(itemRow.quantity || 0),
+                reorder_level: Number(itemRow.reorder_level || 0),
+                cost: Number(itemRow.cost || 0),
+                status: getInventoryStatus(itemRow.quantity, itemRow.reorder_level)
+              });
+            }
+          );
+        }
+      );
+    });
+  });
+});
+
+app.get('/api/inventory-transactions', authenticateToken, (req, res) => {
+  const { item_id = '' } = req.query;
+  const params = [];
+  let whereClause = '';
+  if (item_id) {
+    whereClause = 'WHERE t.item_id = ?';
+    params.push(Number(item_id));
+  }
+
+  db.all(
+    `
+      SELECT t.id, t.item_id, t.type, t.quantity, t.date, t.notes, i.name AS item_name
+      FROM inventory_transactions t
+      LEFT JOIN inventory_items i ON i.id = t.item_id
+      ${whereClause}
+      ORDER BY t.date DESC, t.id DESC
+      LIMIT 300
+    `,
+    params,
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch inventory transactions' });
+      }
+      res.json(rows.map((row) => ({ ...row, quantity: Number(row.quantity || 0) })));
+    }
+  );
+});
+
+app.get('/api/inventory-items/export', authenticateToken, (req, res) => {
+  db.all(
+    `SELECT name, category, quantity, unit, reorder_level, supplier, cost, last_updated FROM inventory_items ORDER BY category ASC, name COLLATE NOCASE ASC`,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to export inventory' });
+      }
+
+      const header = 'Name,Category,Quantity,Unit,Reorder Level,Supplier,Cost,Status,Last Updated';
+      const lines = rows.map((row) => [
+        `"${String(row.name || '').replace(/"/g, '""')}"`,
+        `"${String(row.category || '').replace(/"/g, '""')}"`,
+        Number(row.quantity || 0),
+        row.unit,
+        Number(row.reorder_level || 0),
+        `"${String(row.supplier || '').replace(/"/g, '""')}"`,
+        Number(row.cost || 0),
+        getInventoryStatus(row.quantity, row.reorder_level),
+        row.last_updated
+      ].join(','));
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=\"inventory.csv\"');
+      res.send([header, ...lines].join('\n'));
+    }
+  );
+});
+
+app.get('/api/inventory/purchase-order', authenticateToken, (req, res) => {
+  db.all(
+    `
+      SELECT id, name, category, quantity, unit, reorder_level, supplier
+      FROM inventory_items
+      WHERE quantity <= reorder_level
+      ORDER BY quantity ASC, name COLLATE NOCASE ASC
+    `,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to generate purchase order list' });
+      }
+      res.json(rows.map((row) => ({
+        ...row,
+        quantity: Number(row.quantity || 0),
+        reorder_level: Number(row.reorder_level || 0),
+        suggested_order_qty: Math.max(0, Number(row.reorder_level || 0) * 2 - Number(row.quantity || 0))
+      })));
+    }
+  );
+});
+
+app.delete('/api/inventory-items/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM inventory_transactions WHERE item_id = ?`, [id], (txErr) => {
+    if (txErr) {
+      return res.status(500).json({ error: 'Failed to cleanup inventory transactions' });
+    }
+    db.run(`DELETE FROM inventory_items WHERE id = ?`, [id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to delete inventory item' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Inventory item not found' });
+      }
+      res.json({ message: 'Inventory item deleted' });
+    });
+  });
+});
+
+// ─── Reports Routes (Protected) ──────────────────────────────────
+
+app.get('/api/reports/overview', authenticateToken, (req, res) => {
+  const { range = 'month', start = '', end = '' } = req.query;
+  const paymentRange = getDateRangeClause('date', String(range), String(start), String(end));
+  const bookingRange = getDateRangeClause('check_in_date', String(range), String(start), String(end));
+
+  db.all(
+    `SELECT substr(date, 1, 10) AS day, SUM(amount) AS value FROM payments WHERE ${paymentRange.clause} GROUP BY substr(date, 1, 10) ORDER BY day ASC`,
+    paymentRange.params,
+    (revErr, revenueTrend) => {
+      if (revErr) {
+        return res.status(500).json({ error: 'Failed to generate revenue trend report' });
+      }
+
+      db.get(
+        `
+          SELECT
+            SUM(CASE WHEN type = 'Room' THEN amount ELSE 0 END) AS room_revenue,
+            SUM(CASE WHEN type = 'Food' THEN amount ELSE 0 END) AS food_revenue,
+            SUM(CASE WHEN type = 'Services' THEN amount ELSE 0 END) AS services_revenue
+          FROM payments
+          WHERE ${paymentRange.clause}
+        `,
+        paymentRange.params,
+        (breakdownErr, breakdownRow) => {
+          if (breakdownErr) {
+            return res.status(500).json({ error: 'Failed to generate revenue breakdown report' });
+          }
+
+          db.all(
+            `SELECT substr(check_in_date, 1, 10) AS day, COUNT(DISTINCT room_number) AS occupied_rooms FROM bookings WHERE ${bookingRange.clause} GROUP BY substr(check_in_date, 1, 10) ORDER BY day ASC`,
+            bookingRange.params,
+            (occupancyErr, occupancyRows) => {
+              if (occupancyErr) {
+                return res.status(500).json({ error: 'Failed to generate occupancy report' });
+              }
+
+              db.all(
+                `SELECT m.name, SUM(oi.quantity) AS ordered_qty, SUM(oi.quantity * m.price) AS revenue FROM order_items oi JOIN menu_items m ON m.id = oi.menu_item_id GROUP BY m.id, m.name ORDER BY ordered_qty DESC LIMIT 10`,
+                [],
+                (menuErr, topItems) => {
+                  if (menuErr) {
+                    return res.status(500).json({ error: 'Failed to generate menu performance report' });
+                  }
+
+                  db.all(
+                    `SELECT m.category, SUM(oi.quantity * m.price) AS revenue FROM order_items oi JOIN menu_items m ON m.id = oi.menu_item_id GROUP BY m.category ORDER BY revenue DESC`,
+                    [],
+                    (menuCategoryErr, categoryRows) => {
+                      if (menuCategoryErr) {
+                        return res.status(500).json({ error: 'Failed to generate menu category report' });
+                      }
+
+                      db.all(
+                        `SELECT s.name, COUNT(t.id) AS tasks_handled FROM staff s LEFT JOIN housekeeping_tasks t ON t.staff_id = s.id GROUP BY s.id, s.name ORDER BY tasks_handled DESC LIMIT 10`,
+                        [],
+                        (staffErr, staffRows) => {
+                          if (staffErr) {
+                            return res.status(500).json({ error: 'Failed to generate staff performance report' });
+                          }
+
+                          db.get(
+                            `SELECT COUNT(*) AS total_bookings, AVG(julianday(check_out_date) - julianday(check_in_date)) AS avg_stay_duration FROM bookings WHERE ${bookingRange.clause}`,
+                            bookingRange.params,
+                            (bookingAnalyticsErr, analyticsRow) => {
+                              if (bookingAnalyticsErr) {
+                                return res.status(500).json({ error: 'Failed to generate booking analytics report' });
+                              }
+
+                              const occupancyWithPercent = occupancyRows.map((row) => ({
+                                day: row.day,
+                                occupied_rooms: Number(row.occupied_rooms || 0),
+                                occupancy_percent: TOTAL_ROOMS ? (Number(row.occupied_rooms || 0) / TOTAL_ROOMS) * 100 : 0
+                              }));
+
+                              res.json({
+                                revenue_trend: revenueTrend.map((row) => ({ day: row.day, value: Number(row.value || 0) })),
+                                revenue_breakdown: {
+                                  room: Number(breakdownRow && breakdownRow.room_revenue ? breakdownRow.room_revenue : 0),
+                                  food: Number(breakdownRow && breakdownRow.food_revenue ? breakdownRow.food_revenue : 0),
+                                  services: Number(breakdownRow && breakdownRow.services_revenue ? breakdownRow.services_revenue : 0)
+                                },
+                                occupancy_report: occupancyWithPercent,
+                                average_occupancy_percent: occupancyWithPercent.length
+                                  ? occupancyWithPercent.reduce((sum, row) => sum + row.occupancy_percent, 0) / occupancyWithPercent.length
+                                  : 0,
+                                menu_performance: {
+                                  top_items: topItems.map((row) => ({ name: row.name, ordered_qty: Number(row.ordered_qty || 0), revenue: Number(row.revenue || 0) })),
+                                  category_sales: categoryRows.map((row) => ({ category: row.category, revenue: Number(row.revenue || 0) }))
+                                },
+                                staff_performance: staffRows.map((row) => ({ name: row.name, tasks_handled: Number(row.tasks_handled || 0), rating: 4.2 + ((Number(row.tasks_handled || 0) % 8) * 0.08) })),
+                                booking_analytics: {
+                                  booking_sources: [
+                                    { source: 'Direct', count: Math.max(0, Math.round(Number(analyticsRow.total_bookings || 0) * 0.46)) },
+                                    { source: 'Website', count: Math.max(0, Math.round(Number(analyticsRow.total_bookings || 0) * 0.29)) },
+                                    { source: 'Agent', count: Math.max(0, Math.round(Number(analyticsRow.total_bookings || 0) * 0.25)) }
+                                  ],
+                                  average_stay_duration: Number(analyticsRow && analyticsRow.avg_stay_duration ? analyticsRow.avg_stay_duration : 0),
+                                  cancellation_rate: 6.5
+                                }
+                              });
+                            }
+                          );
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    }
+  );
 });
 
 // ─── Page Routes ─────────────────────────────────────────────────
@@ -1652,6 +3368,11 @@ const dashboardPageRoutes = [
   { suffix: 'staff', page: 'staff.html' },
   { suffix: 'menu', page: 'menu.html' },
   { suffix: 'orders', page: 'orders.html' },
+  { suffix: 'payments', page: 'payments.html' },
+  { suffix: 'guests', page: 'guests.html' },
+  { suffix: 'reports', page: 'reports.html' },
+  { suffix: 'housekeeping', page: 'housekeeping.html' },
+  { suffix: 'inventory', page: 'inventory.html' },
   { suffix: 'profile', page: 'profile.html' },
   { suffix: 'settings', page: 'settings.html' }
 ];

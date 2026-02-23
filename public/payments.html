@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payments Management - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .container {
+      flex: 1;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title h1 {
+      font-size: 1.45rem;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+
+    .title p {
+      font-size: 0.92rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .btn-add {
+      background: #1a73e8;
+      color: #fff;
+      padding: 10px 16px;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover { background: #1557b0; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-bottom: 7px;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.35rem;
+      color: #111827;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 20px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      min-width: 0;
+    }
+
+    .field textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+    }
+
+    td {
+      font-size: 0.89rem;
+      color: #1f2937;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .status-paid {
+      background: #ecfdf3;
+      color: #166534;
+      border-color: #86efac;
+    }
+
+    .status-pending {
+      background: #fff7ed;
+      color: #9a3412;
+      border-color: #fdba74;
+    }
+
+    .status-partial {
+      background: #fefce8;
+      color: #854d0e;
+      border-color: #fde68a;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn-edit {
+      background: #0d6efd;
+      color: #fff;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+    }
+
+    .btn-edit:hover { background: #0a58ca; }
+
+    .btn-delete {
+      background: #dc3545;
+      color: #fff;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+    }
+
+    .btn-delete:hover { background: #b02a37; }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      color: #6b7280;
+      border: 1px dashed #d1d5db;
+      border-radius: 10px;
+      background: #fcfcfd;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      width: 100%;
+      max-width: 760px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 32px rgba(0,0,0,0.2);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal h2 {
+      font-size: 1.15rem;
+      color: #1a73e8;
+      margin-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .modal-actions {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-secondary:hover { background: #4b5563; }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-primary:hover { background: #1557b0; }
+
+    .confirm-text {
+      color: #4b5563;
+      line-height: 1.45;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1100px) {
+      .stats-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+      .filters { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn-add { width: 100%; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .filters { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="header">
+        <div class="title">
+          <h1>Payments Management</h1>
+          <p id="paymentsCount">0 payments found</p>
+        </div>
+        <button class="btn btn-add" onclick="openPaymentModal()">+ Record Payment</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Revenue</div>
+          <div class="stat-value" id="statTotalRevenue">₹0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending Payments</div>
+          <div class="stat-value" id="statPendingPayments">₹0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Today's Collection</div>
+          <div class="stat-value" id="statTodayCollection">₹0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">This Month Revenue</div>
+          <div class="stat-value" id="statMonthRevenue">₹0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <div class="field">
+            <label for="searchInput">Search Guest / Room</label>
+            <input type="text" id="searchInput" placeholder="Guest name or room number">
+          </div>
+          <div class="field">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter">
+              <option value="">All</option>
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+              <option value="Partial">Partial</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="typeFilter">Payment Type</label>
+            <select id="typeFilter">
+              <option value="">All</option>
+              <option value="Room">Room</option>
+              <option value="Food">Food</option>
+              <option value="Services">Services</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="startDateFilter">From Date</label>
+            <input type="date" id="startDateFilter">
+          </div>
+          <div class="field">
+            <label for="endDateFilter">To Date</label>
+            <input type="date" id="endDateFilter">
+          </div>
+        </div>
+
+        <div id="paymentsContainer" class="table-wrap">
+          <div class="empty-state">Loading payments...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="paymentModal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="paymentModalTitle">Record Payment</h2>
+      <form id="paymentForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="paymentGuest">Guest</label>
+            <select id="paymentGuest"></select>
+          </div>
+
+          <div class="field">
+            <label for="paymentBooking">Room / Booking</label>
+            <select id="paymentBooking"></select>
+          </div>
+
+          <div class="field">
+            <label for="paymentRoom">Room Number</label>
+            <select id="paymentRoom" required></select>
+          </div>
+
+          <div class="field">
+            <label for="paymentAmount">Amount (₹)</label>
+            <input type="number" id="paymentAmount" min="1" step="0.01" required>
+          </div>
+
+          <div class="field">
+            <label for="paymentMethod">Payment Method</label>
+            <select id="paymentMethod" required>
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+              <option value="UPI">UPI</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="paymentType">Type</label>
+            <select id="paymentType" required>
+              <option value="Room">Room</option>
+              <option value="Food">Food</option>
+              <option value="Services">Services</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="paymentStatus">Status</label>
+            <select id="paymentStatus" required>
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+              <option value="Partial">Partial</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="paymentDate">Payment Date</label>
+            <input type="datetime-local" id="paymentDate" required>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="paymentSaveBtn">Record Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal" style="max-width: 420px;">
+      <h2>Delete Payment</h2>
+      <p class="confirm-text" id="deleteConfirmText"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-delete" onclick="confirmDeletePayment()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('payments')) throw new Error('Not authenticated');
+
+    const PAYMENTS_API = BASE + '/api/payments';
+    const PAYMENTS_SUMMARY_API = BASE + '/api/payments/summary';
+    const GUESTS_API = BASE + '/api/guests';
+    const BOOKINGS_API = BASE + '/api/bookings';
+    const ROOM_CAPACITY_API = BASE + '/api/rooms/capacity';
+
+    const paymentsContainer = document.getElementById('paymentsContainer');
+    const paymentsCountEl = document.getElementById('paymentsCount');
+    const paymentModal = document.getElementById('paymentModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const paymentForm = document.getElementById('paymentForm');
+
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+
+    const paymentGuest = document.getElementById('paymentGuest');
+    const paymentBooking = document.getElementById('paymentBooking');
+    const paymentRoom = document.getElementById('paymentRoom');
+    const paymentAmount = document.getElementById('paymentAmount');
+    const paymentMethod = document.getElementById('paymentMethod');
+    const paymentType = document.getElementById('paymentType');
+    const paymentStatus = document.getElementById('paymentStatus');
+    const paymentDate = document.getElementById('paymentDate');
+
+    let payments = [];
+    let guests = [];
+    let bookings = [];
+    let rooms = [];
+    let editingPaymentId = null;
+    let pendingDeleteId = null;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatCurrency(amount) {
+      return `₹${Number(amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+    }
+
+    function formatDisplayDate(isoString) {
+      const date = new Date(isoString);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function toLocalDateTimeValue(isoString) {
+      const date = isoString ? new Date(isoString) : new Date();
+      if (Number.isNaN(date.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function getStatusClass(status) {
+      if (status === 'Paid') return 'status-paid';
+      if (status === 'Partial') return 'status-partial';
+      return 'status-pending';
+    }
+
+    function updatePaymentsCount() {
+      paymentsCountEl.textContent = `${payments.length} payments found`;
+    }
+
+    function updateSummaryCards(summary) {
+      document.getElementById('statTotalRevenue').textContent = formatCurrency(summary.total_revenue);
+      document.getElementById('statPendingPayments').textContent = formatCurrency(summary.pending_payments);
+      document.getElementById('statTodayCollection').textContent = formatCurrency(summary.today_collection);
+      document.getElementById('statMonthRevenue').textContent = formatCurrency(summary.month_revenue);
+    }
+
+    function renderGuestDropdown() {
+      const options = ['<option value="">Walk-in Guest</option>'];
+      guests.forEach((guest) => {
+        options.push(`<option value="${guest.id}">${escapeHtml(guest.name)} (${escapeHtml(guest.phone || 'No phone')})</option>`);
+      });
+      paymentGuest.innerHTML = options.join('');
+    }
+
+    function renderBookingDropdown() {
+      const options = ['<option value="">Select booking (optional)</option>'];
+      bookings.forEach((booking) => {
+        const label = `#${booking.id} - Room ${booking.room_number} - ${booking.guest_name} (${booking.check_in_date} to ${booking.check_out_date})`;
+        options.push(`<option value="${booking.id}">${escapeHtml(label)}</option>`);
+      });
+      paymentBooking.innerHTML = options.join('');
+    }
+
+    function renderRoomDropdown() {
+      const options = ['<option value="">Select room</option>'];
+      rooms.forEach((room) => {
+        options.push(`<option value="${room}">Room ${room}</option>`);
+      });
+      paymentRoom.innerHTML = options.join('');
+    }
+
+    function renderPaymentsTable() {
+      if (!payments.length) {
+        paymentsContainer.innerHTML = '<div class="empty-state">No payments found with current filters.</div>';
+        updatePaymentsCount();
+        return;
+      }
+
+      const rows = payments.map((payment) => {
+        return `
+          <tr>
+            <td>#${payment.id}</td>
+            <td>${escapeHtml(payment.guest_name || 'Walk-in Guest')}</td>
+            <td>Room ${escapeHtml(payment.room_number)}</td>
+            <td>${formatCurrency(payment.amount)}</td>
+            <td>${escapeHtml(payment.type)}</td>
+            <td>${escapeHtml(payment.method)}</td>
+            <td><span class="status-badge ${getStatusClass(payment.status)}">${escapeHtml(payment.status)}</span></td>
+            <td>${formatDisplayDate(payment.date)}</td>
+            <td>
+              <div class="actions">
+                <button class="btn btn-edit" onclick="openPaymentModal(${payment.id})">Edit</button>
+                <button class="btn btn-delete" onclick="openDeleteModal(${payment.id})">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      paymentsContainer.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Payment ID</th>
+              <th>Guest Name</th>
+              <th>Room Number</th>
+              <th>Amount (₹)</th>
+              <th>Type</th>
+              <th>Method</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      updatePaymentsCount();
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          ...Auth.headers()
+        }
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        Auth.logout();
+        return { ok: false, auth: false, data: null };
+      }
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      return { ok: response.ok, auth: true, data, status: response.status };
+    }
+
+    async function loadSummary() {
+      const result = await fetchJson(PAYMENTS_SUMMARY_API);
+      if (!result.auth) return false;
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to load payment summary', 'error');
+        return false;
+      }
+      updateSummaryCards(result.data || {});
+      return true;
+    }
+
+    function buildPaymentQuery() {
+      const params = new URLSearchParams();
+
+      const search = searchInput.value.trim();
+      const status = statusFilter.value;
+      const type = typeFilter.value;
+      const startDate = startDateFilter.value;
+      const endDate = endDateFilter.value;
+
+      if (search) params.set('search', search);
+      if (status) params.set('status', status);
+      if (type) params.set('type', type);
+      if (startDate) params.set('start_date', startDate);
+      if (endDate) params.set('end_date', endDate);
+
+      const queryString = params.toString();
+      return queryString ? `?${queryString}` : '';
+    }
+
+    async function loadPayments() {
+      const result = await fetchJson(PAYMENTS_API + buildPaymentQuery());
+      if (!result.auth) return;
+      if (!result.ok) {
+        paymentsContainer.innerHTML = '<div class="empty-state">Failed to load payments.</div>';
+        return;
+      }
+
+      payments = Array.isArray(result.data) ? result.data : [];
+      renderPaymentsTable();
+    }
+
+    async function loadGuests() {
+      const result = await fetchJson(GUESTS_API);
+      if (!result.auth) return false;
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to load guests', 'error');
+        return false;
+      }
+      guests = Array.isArray(result.data) ? result.data : [];
+      renderGuestDropdown();
+      return true;
+    }
+
+    async function loadBookings() {
+      const result = await fetchJson(BOOKINGS_API);
+      if (!result.auth) return false;
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to load bookings', 'error');
+        return false;
+      }
+      bookings = Array.isArray(result.data) ? result.data : [];
+      renderBookingDropdown();
+      return true;
+    }
+
+    async function loadRooms() {
+      const result = await fetchJson(ROOM_CAPACITY_API);
+      if (!result.auth) return false;
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to load room list', 'error');
+        return false;
+      }
+      const map = result.data || {};
+      rooms = Object.keys(map).sort();
+      renderRoomDropdown();
+      return true;
+    }
+
+    function resetPaymentForm() {
+      paymentForm.reset();
+      editingPaymentId = null;
+      document.getElementById('paymentModalTitle').textContent = 'Record Payment';
+      document.getElementById('paymentSaveBtn').textContent = 'Record Payment';
+      paymentDate.value = toLocalDateTimeValue(new Date().toISOString());
+      paymentBooking.value = '';
+      paymentGuest.value = '';
+      paymentType.value = 'Room';
+      paymentMethod.value = 'Cash';
+      paymentStatus.value = 'Paid';
+    }
+
+    function openPaymentModal(paymentId = null) {
+      resetPaymentForm();
+
+      if (paymentId) {
+        const payment = payments.find((item) => item.id === paymentId);
+        if (!payment) {
+          showToast('Payment not found', 'error');
+          return;
+        }
+
+        editingPaymentId = payment.id;
+        document.getElementById('paymentModalTitle').textContent = `Edit Payment #${payment.id}`;
+        document.getElementById('paymentSaveBtn').textContent = 'Update Payment';
+
+        paymentGuest.value = payment.guest_id || '';
+        paymentRoom.value = payment.room_number;
+        paymentAmount.value = Number(payment.amount || 0);
+        paymentMethod.value = payment.method;
+        paymentType.value = payment.type;
+        paymentStatus.value = payment.status;
+        paymentDate.value = toLocalDateTimeValue(payment.date);
+      }
+
+      paymentModal.classList.add('open');
+    }
+
+    function closePaymentModal() {
+      paymentModal.classList.remove('open');
+      resetPaymentForm();
+    }
+
+    function openDeleteModal(paymentId) {
+      const payment = payments.find((item) => item.id === paymentId);
+      if (!payment) {
+        showToast('Payment not found', 'error');
+        return;
+      }
+
+      pendingDeleteId = paymentId;
+      document.getElementById('deleteConfirmText').textContent =
+        `Are you sure you want to delete payment #${payment.id} for Room ${payment.room_number}?`;
+      deleteModal.classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      deleteModal.classList.remove('open');
+    }
+
+    function buildPaymentPayload() {
+      return {
+        guest_id: paymentGuest.value || null,
+        room_number: paymentRoom.value,
+        amount: Number(paymentAmount.value),
+        method: paymentMethod.value,
+        type: paymentType.value,
+        status: paymentStatus.value,
+        date: new Date(paymentDate.value).toISOString()
+      };
+    }
+
+    paymentBooking.addEventListener('change', () => {
+      const bookingId = Number(paymentBooking.value || 0);
+      if (!bookingId) return;
+
+      const booking = bookings.find((item) => item.id === bookingId);
+      if (!booking) return;
+
+      paymentRoom.value = booking.room_number;
+
+      if (booking.guest_phone) {
+        const guestMatch = guests.find((guest) => guest.phone === booking.guest_phone);
+        if (guestMatch) {
+          paymentGuest.value = String(guestMatch.id);
+        }
+      }
+    });
+
+    paymentForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const payload = buildPaymentPayload();
+      if (!payload.room_number) {
+        showToast('Room number is required', 'error');
+        return;
+      }
+
+      if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
+        showToast('Amount must be greater than 0', 'error');
+        return;
+      }
+
+      const isEdit = !!editingPaymentId;
+      const url = isEdit ? `${PAYMENTS_API}/${editingPaymentId}` : PAYMENTS_API;
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const result = await fetchJson(url, {
+        method,
+        body: JSON.stringify(payload)
+      });
+
+      if (!result.auth) return;
+
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to save payment', 'error');
+        return;
+      }
+
+      closePaymentModal();
+      showToast(isEdit ? 'Payment updated successfully' : 'Payment recorded successfully', 'success');
+      await Promise.all([loadSummary(), loadPayments()]);
+    });
+
+    async function confirmDeletePayment() {
+      if (!pendingDeleteId) return;
+
+      const result = await fetchJson(`${PAYMENTS_API}/${pendingDeleteId}`, {
+        method: 'DELETE'
+      });
+
+      if (!result.auth) return;
+
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to delete payment', 'error');
+        return;
+      }
+
+      closeDeleteModal();
+      showToast('Payment deleted successfully', 'success');
+      await Promise.all([loadSummary(), loadPayments()]);
+    }
+
+    let filterDebounceTimer = null;
+    function debouncedReload() {
+      clearTimeout(filterDebounceTimer);
+      filterDebounceTimer = setTimeout(() => loadPayments(), 280);
+    }
+
+    searchInput.addEventListener('input', debouncedReload);
+    statusFilter.addEventListener('change', loadPayments);
+    typeFilter.addEventListener('change', loadPayments);
+    startDateFilter.addEventListener('change', loadPayments);
+    endDateFilter.addEventListener('change', loadPayments);
+
+    paymentModal.addEventListener('click', (event) => {
+      if (event.target === paymentModal) {
+        closePaymentModal();
+      }
+    });
+
+    deleteModal.addEventListener('click', (event) => {
+      if (event.target === deleteModal) {
+        closeDeleteModal();
+      }
+    });
+
+    window.openPaymentModal = openPaymentModal;
+    window.closePaymentModal = closePaymentModal;
+    window.openDeleteModal = openDeleteModal;
+    window.closeDeleteModal = closeDeleteModal;
+    window.confirmDeletePayment = confirmDeletePayment;
+
+    (async function initPaymentsPage() {
+      const [roomsLoaded, guestsLoaded, bookingsLoaded] = await Promise.all([
+        loadRooms(),
+        loadGuests(),
+        loadBookings()
+      ]);
+
+      if (!roomsLoaded || !guestsLoaded || !bookingsLoaded) return;
+
+      resetPaymentForm();
+      await Promise.all([loadSummary(), loadPayments()]);
+    })();
+  </script>
+</body>
+</html>

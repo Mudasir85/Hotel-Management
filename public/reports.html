@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports - Hotel Booking System</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; }
+    .container { padding: 24px; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .top h1 { margin: 0 0 6px; font-size: 1.45rem; }
+    .sub { margin: 0; color: #6b7280; font-size: .92rem; }
+    .btn { border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: .9rem; padding: 9px 12px; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-secondary { background: #6b7280; color: #fff; }
+    .toolbar { display: grid; grid-template-columns: 1fr auto auto auto auto auto; gap: 8px; margin-bottom: 12px; }
+    select, input { border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 10px; font-size: .9rem; }
+    .card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .card h3 { margin: 0 0 8px; font-size: 1rem; color: #111827; }
+    .chart-wrap { height: 280px; }
+    .stats { display: grid; gap: 8px; margin-top: 8px; }
+    .stat-row { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; font-size: .88rem; }
+    .stat-row:last-child { border-bottom: none; }
+    .empty { padding: 24px; text-align: center; color: #6b7280; border: 1px dashed #d1d5db; border-radius: 10px; }
+    @media (max-width: 1100px) { .toolbar { grid-template-columns: 1fr 1fr; } .card-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+  <div class="main-content">
+    <div class="container">
+      <div class="top">
+        <div>
+          <h1>Reports</h1>
+          <p class="sub">Revenue, occupancy, menu performance, staff performance, and booking analytics</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="toolbar">
+          <select id="range">
+            <option value="today">Today</option>
+            <option value="week">Week</option>
+            <option value="month" selected>Month</option>
+            <option value="year">Year</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input id="start" type="date" disabled>
+          <input id="end" type="date" disabled>
+          <button class="btn btn-primary" onclick="loadReports()">Apply</button>
+          <button class="btn btn-secondary" onclick="exportExcel()">Export Excel</button>
+          <button class="btn btn-secondary" onclick="exportPdf()">Export PDF</button>
+        </div>
+      </div>
+
+      <div id="content">
+        <div class="card-grid">
+          <div class="card"><h3>Revenue Trend</h3><div class="chart-wrap"><canvas id="revenueChart"></canvas></div></div>
+          <div class="card"><h3>Revenue Breakdown</h3><div class="chart-wrap"><canvas id="breakdownChart"></canvas></div></div>
+          <div class="card"><h3>Occupancy Report</h3><div class="chart-wrap"><canvas id="occupancyChart"></canvas></div><div id="occupancyMeta" class="stats"></div></div>
+          <div class="card"><h3>Menu Performance</h3><div class="chart-wrap"><canvas id="menuChart"></canvas></div><div id="menuMeta" class="stats"></div></div>
+          <div class="card"><h3>Staff Performance</h3><div class="chart-wrap"><canvas id="staffChart"></canvas></div></div>
+          <div class="card"><h3>Booking Analytics</h3><div class="chart-wrap"><canvas id="bookingSourceChart"></canvas></div><div id="bookingMeta" class="stats"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('reports')) throw new Error('Not authenticated');
+
+    const API = BASE + '/api/reports/overview';
+    let reportPayload = null;
+    const charts = {};
+
+    function destroyChart(key) {
+      if (charts[key]) {
+        charts[key].destroy();
+        charts[key] = null;
+      }
+    }
+
+    function getQuery() {
+      const range = document.getElementById('range').value;
+      const qp = new URLSearchParams({ range });
+      if (range === 'custom') {
+        const start = document.getElementById('start').value;
+        const end = document.getElementById('end').value;
+        if (start && end) {
+          qp.set('start', start);
+          qp.set('end', end);
+        }
+      }
+      return `?${qp.toString()}`;
+    }
+
+    function currency(v) { return `₹${Number(v || 0).toFixed(0)}`; }
+
+    function renderCharts(data) {
+      destroyChart('revenue');
+      destroyChart('breakdown');
+      destroyChart('occupancy');
+      destroyChart('menu');
+      destroyChart('staff');
+      destroyChart('source');
+
+      charts.revenue = new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: {
+          labels: (data.revenue_trend || []).map((x) => x.day),
+          datasets: [{ label: 'Revenue (₹)', data: (data.revenue_trend || []).map((x) => Number(x.value || 0)), borderColor: '#1a73e8', backgroundColor: 'rgba(26,115,232,0.2)', tension: .32, fill: true }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      charts.breakdown = new Chart(document.getElementById('breakdownChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Room', 'Food', 'Services'],
+          datasets: [{ data: [Number(data.revenue_breakdown.room || 0), Number(data.revenue_breakdown.food || 0), Number(data.revenue_breakdown.services || 0)], backgroundColor: ['#1a73e8', '#0f9d58', '#fbbc04'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      charts.occupancy = new Chart(document.getElementById('occupancyChart'), {
+        type: 'bar',
+        data: {
+          labels: (data.occupancy_report || []).map((x) => x.day),
+          datasets: [{ label: 'Occupancy %', data: (data.occupancy_report || []).map((x) => Number(x.occupancy_percent || 0).toFixed(1)), backgroundColor: '#2563eb' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+      document.getElementById('occupancyMeta').innerHTML = `<div class="stat-row"><span>Average Occupancy</span><strong>${Number(data.average_occupancy_percent || 0).toFixed(1)}%</strong></div>`;
+
+      charts.menu = new Chart(document.getElementById('menuChart'), {
+        type: 'bar',
+        data: {
+          labels: (data.menu_performance.top_items || []).map((x) => x.name),
+          datasets: [{ label: 'Qty Ordered', data: (data.menu_performance.top_items || []).map((x) => Number(x.ordered_qty || 0)), backgroundColor: '#0ea5e9' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+      });
+      document.getElementById('menuMeta').innerHTML = (data.menu_performance.category_sales || []).slice(0, 6).map((x) => `<div class="stat-row"><span>${x.category}</span><strong>${currency(x.revenue)}</strong></div>`).join('') || '<div class="empty">No menu data</div>';
+
+      charts.staff = new Chart(document.getElementById('staffChart'), {
+        type: 'bar',
+        data: {
+          labels: (data.staff_performance || []).map((x) => x.name),
+          datasets: [{ label: 'Tasks Handled', data: (data.staff_performance || []).map((x) => Number(x.tasks_handled || 0)), backgroundColor: '#16a34a' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      charts.source = new Chart(document.getElementById('bookingSourceChart'), {
+        type: 'pie',
+        data: {
+          labels: (data.booking_analytics.booking_sources || []).map((x) => x.source),
+          datasets: [{ data: (data.booking_analytics.booking_sources || []).map((x) => Number(x.count || 0)), backgroundColor: ['#8b5cf6', '#f97316', '#14b8a6'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+      document.getElementById('bookingMeta').innerHTML = `
+        <div class="stat-row"><span>Average Stay Duration</span><strong>${Number(data.booking_analytics.average_stay_duration || 0).toFixed(1)} days</strong></div>
+        <div class="stat-row"><span>Cancellation Rate</span><strong>${Number(data.booking_analytics.cancellation_rate || 0).toFixed(1)}%</strong></div>
+      `;
+    }
+
+    async function loadReports() {
+      try {
+        const res = await fetch(API + getQuery(), { headers: Auth.headers() });
+        if (res.status === 401 || res.status === 403) return Auth.logout();
+        if (!res.ok) {
+          const j = await res.json();
+          showToast(j.error || 'Failed to load reports', 'error');
+          return;
+        }
+        reportPayload = await res.json();
+        renderCharts(reportPayload);
+        showToast('Reports updated', 'success', 1800);
+      } catch {
+        showToast('Failed to load reports', 'error');
+      }
+    }
+
+    function exportExcel() {
+      if (!reportPayload) return showToast('Load report first', 'error');
+      const rows = [['Section', 'Metric', 'Value']];
+      rows.push(['Revenue', 'Room Revenue', Number(reportPayload.revenue_breakdown.room || 0).toFixed(0)]);
+      rows.push(['Revenue', 'Food Revenue', Number(reportPayload.revenue_breakdown.food || 0).toFixed(0)]);
+      rows.push(['Revenue', 'Services Revenue', Number(reportPayload.revenue_breakdown.services || 0).toFixed(0)]);
+      rows.push(['Occupancy', 'Average Occupancy %', Number(reportPayload.average_occupancy_percent || 0).toFixed(1)]);
+      rows.push(['Booking', 'Average Stay Duration', Number(reportPayload.booking_analytics.average_stay_duration || 0).toFixed(1)]);
+      rows.push(['Booking', 'Cancellation Rate %', Number(reportPayload.booking_analytics.cancellation_rate || 0).toFixed(1)]);
+      (reportPayload.menu_performance.category_sales || []).forEach((row) => rows.push(['Menu Category', row.category, Number(row.revenue || 0).toFixed(0)]));
+      const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'reports.xlsx.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Report exported (Excel CSV)', 'success');
+    }
+
+    function exportPdf() {
+      if (!reportPayload) return showToast('Load report first', 'error');
+      window.print();
+      showToast('Print dialog opened for PDF save', 'success');
+    }
+
+    document.getElementById('range').addEventListener('change', (e) => {
+      const custom = e.target.value === 'custom';
+      document.getElementById('start').disabled = !custom;
+      document.getElementById('end').disabled = !custom;
+    });
+
+    window.loadReports = loadReports;
+    window.exportExcel = exportExcel;
+    window.exportPdf = exportPdf;
+
+    loadReports();
+  </script>
+</body>
+</html>

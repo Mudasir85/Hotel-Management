@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guests Management - Hotel Booking System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .container {
+      flex: 1;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title h1 {
+      font-size: 1.45rem;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+
+    .title p {
+      font-size: 0.92rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .btn-add {
+      background: #1a73e8;
+      color: #fff;
+      padding: 10px 16px;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover { background: #1557b0; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-bottom: 7px;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.35rem;
+      color: #111827;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 20px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      min-width: 0;
+    }
+
+    .field textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .guests-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    .guest-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .guest-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .guest-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #1a73e8;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.4px;
+      flex-shrink: 0;
+    }
+
+    .guest-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .guest-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #111827;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .guest-meta {
+      font-size: 0.8rem;
+      color: #6b7280;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .vip-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-self: start;
+      border-radius: 999px;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      background: #fffbeb;
+      padding: 3px 9px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .vip-badge.regular {
+      border-color: #dbeafe;
+      color: #1d4ed8;
+      background: #eff6ff;
+    }
+
+    .guest-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .guest-stat {
+      border: 1px solid #eef1f5;
+      border-radius: 8px;
+      padding: 8px;
+      background: #fafbfd;
+    }
+
+    .guest-stat-label {
+      font-size: 0.72rem;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+
+    .guest-stat-value {
+      font-size: 0.88rem;
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .guest-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-view,
+    .btn-edit,
+    .btn-delete {
+      color: #fff;
+      font-size: 0.8rem;
+      padding: 7px 11px;
+    }
+
+    .btn-view { background: #0f9d58; }
+    .btn-view:hover { background: #0b7a43; }
+    .btn-edit { background: #0d6efd; }
+    .btn-edit:hover { background: #0a58ca; }
+    .btn-delete { background: #dc3545; }
+    .btn-delete:hover { background: #b02a37; }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      color: #6b7280;
+      border: 1px dashed #d1d5db;
+      border-radius: 10px;
+      background: #fcfcfd;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      width: 100%;
+      max-width: 860px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 32px rgba(0,0,0,0.2);
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    .modal.small { max-width: 420px; }
+
+    .modal h2 {
+      font-size: 1.15rem;
+      color: #1a73e8;
+      margin-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .photo-preview {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      overflow: hidden;
+      background: #f9fafb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .photo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .modal-actions {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-secondary:hover { background: #4b5563; }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+      padding: 9px 14px;
+    }
+
+    .btn-primary:hover { background: #1557b0; }
+
+    .confirm-text {
+      color: #4b5563;
+      line-height: 1.45;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 16px;
+    }
+
+    .profile-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .profile-avatar {
+      width: 94px;
+      height: 94px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #dbe1e8;
+      background: #f7fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      font-weight: 700;
+    }
+
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-kv {
+      display: grid;
+      gap: 7px;
+    }
+
+    .profile-kv div {
+      font-size: 0.84rem;
+      color: #374151;
+      line-height: 1.4;
+    }
+
+    .profile-kv strong {
+      color: #111827;
+      margin-right: 4px;
+    }
+
+    .profile-timeline {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .timeline-title {
+      font-size: 0.95rem;
+      color: #111827;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      bottom: 2px;
+      width: 2px;
+      background: #dbeafe;
+    }
+
+    .timeline-item {
+      position: relative;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: #fafbfd;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -16px;
+      top: 14px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #1a73e8;
+      border: 2px solid #dbeafe;
+    }
+
+    .timeline-main {
+      font-size: 0.85rem;
+      color: #111827;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .timeline-sub {
+      font-size: 0.79rem;
+      color: #6b7280;
+    }
+
+    @media (max-width: 1300px) {
+      .guests-grid { grid-template-columns: repeat(3, minmax(210px, 1fr)); }
+    }
+
+    @media (max-width: 1024px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .guests-grid { grid-template-columns: repeat(2, minmax(210px, 1fr)); }
+      .profile-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn-add { width: 100%; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .toolbar { grid-template-columns: 1fr; }
+      .guests-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-navbar"></div>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="header">
+        <div class="title">
+          <h1>Guests Management</h1>
+          <p id="guestsCount">0 guests found</p>
+        </div>
+        <button class="btn btn-add" onclick="openGuestModal()">+ Add Guest</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Guests</div>
+          <div class="stat-value" id="statTotalGuests">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Guests</div>
+          <div class="stat-value" id="statActiveGuests">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Returning Guests</div>
+          <div class="stat-value" id="statReturningGuests">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="field">
+            <label for="searchInput">Search by name / phone / email</label>
+            <input type="text" id="searchInput" placeholder="Search guests...">
+          </div>
+          <div class="field">
+            <label for="typeFilter">Filter</label>
+            <select id="typeFilter">
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="vip">VIP</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="guestsContainer" class="guests-grid">
+          <div class="empty-state">Loading guests...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="guestModal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="guestModalTitle">Add Guest</h2>
+      <form id="guestForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="guestName">Name *</label>
+            <input type="text" id="guestName" required>
+          </div>
+
+          <div class="field">
+            <label for="guestEmail">Email *</label>
+            <input type="email" id="guestEmail" required>
+          </div>
+
+          <div class="field">
+            <label for="guestPhone">Phone (10 digits) *</label>
+            <input type="text" id="guestPhone" maxlength="10" pattern="\\d{10}" required>
+          </div>
+
+          <div class="field">
+            <label for="guestIdProof">ID Proof Number</label>
+            <input type="text" id="guestIdProof">
+          </div>
+
+          <div class="field full">
+            <label for="guestAddress">Address</label>
+            <textarea id="guestAddress"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="guestVipStatus">Guest Type</label>
+            <select id="guestVipStatus">
+              <option value="Regular">Regular</option>
+              <option value="VIP">VIP</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="guestPhoto">Photo Upload</label>
+            <input type="file" id="guestPhoto" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif">
+          </div>
+
+          <div class="field">
+            <label>Preview</label>
+            <div class="photo-preview" id="guestPhotoPreview">No Photo</div>
+          </div>
+
+          <div class="field full">
+            <label for="guestNotes">Notes</label>
+            <textarea id="guestNotes" placeholder="Preferences, special requests, remarks..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeGuestModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="guestSaveBtn">Add Guest</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="detailsModal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="detailsTitle">Guest Details</h2>
+      <div id="detailsContent"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeDetailsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal small">
+      <h2>Delete Guest</h2>
+      <p class="confirm-text" id="deleteConfirmText"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-delete" onclick="confirmDeleteGuest()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/sitesh/app.js"></script>
+  <script>
+    if (!initAppPage('guests')) throw new Error('Not authenticated');
+
+    const GUESTS_API = BASE + '/api/guests';
+    const GUESTS_SUMMARY_API = BASE + '/api/guests/summary';
+    const GUEST_UPLOAD_PHOTO_API = BASE + '/api/guests/upload-photo';
+
+    const guestsContainer = document.getElementById('guestsContainer');
+    const guestsCountEl = document.getElementById('guestsCount');
+
+    const guestModal = document.getElementById('guestModal');
+    const detailsModal = document.getElementById('detailsModal');
+    const deleteModal = document.getElementById('deleteModal');
+
+    const guestForm = document.getElementById('guestForm');
+    const searchInput = document.getElementById('searchInput');
+    const typeFilter = document.getElementById('typeFilter');
+
+    const guestName = document.getElementById('guestName');
+    const guestEmail = document.getElementById('guestEmail');
+    const guestPhone = document.getElementById('guestPhone');
+    const guestAddress = document.getElementById('guestAddress');
+    const guestIdProof = document.getElementById('guestIdProof');
+    const guestPhoto = document.getElementById('guestPhoto');
+    const guestPhotoPreview = document.getElementById('guestPhotoPreview');
+    const guestNotes = document.getElementById('guestNotes');
+    const guestVipStatus = document.getElementById('guestVipStatus');
+
+    let guests = [];
+    let editingGuestId = null;
+    let pendingDeleteId = null;
+    let existingPhotoUrl = '';
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(dateValue) {
+      if (!dateValue) return '-';
+      const date = new Date(dateValue);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function formatCurrency(value) {
+      return `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+    }
+
+    function getInitials(name) {
+      const text = String(name || '').trim();
+      if (!text) return 'GU';
+      const parts = text.split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    function getAvatarMarkup(guest) {
+      if (guest.photo) {
+        return `<img src="${escapeHtml(guest.photo)}" alt="${escapeHtml(guest.name)}">`;
+      }
+      return escapeHtml(getInitials(guest.name));
+    }
+
+    function updateGuestCount() {
+      guestsCountEl.textContent = `${guests.length} guests found`;
+    }
+
+    function updateSummaryCards(summary) {
+      document.getElementById('statTotalGuests').textContent = Number(summary.total_guests || 0).toLocaleString('en-IN');
+      document.getElementById('statActiveGuests').textContent = Number(summary.active_guests || 0).toLocaleString('en-IN');
+      document.getElementById('statReturningGuests').textContent = Number(summary.returning_guests || 0).toLocaleString('en-IN');
+    }
+
+    function renderGuestsGrid() {
+      if (!guests.length) {
+        guestsContainer.innerHTML = '<div class="empty-state">No guests found with current filters.</div>';
+        updateGuestCount();
+        return;
+      }
+
+      guestsContainer.innerHTML = guests.map((guest) => {
+        const statusClass = guest.vip_status === 'VIP' ? '' : 'regular';
+        const totalBookings = Number(guest.total_bookings || 0).toLocaleString('en-IN');
+        const isActive = guest.status === 'Active' ? 'Active' : 'Past';
+
+        return `
+          <div class="guest-card">
+            <div class="guest-top">
+              <div class="guest-avatar">${getAvatarMarkup(guest)}</div>
+              <div style="min-width: 0;">
+                <div class="guest-name" title="${escapeHtml(guest.name)}">${escapeHtml(guest.name)}</div>
+                <div class="guest-meta" title="${escapeHtml(guest.email || '-')}">${escapeHtml(guest.email || '-')}</div>
+                <div class="guest-meta">${escapeHtml(guest.phone || '-')}</div>
+              </div>
+            </div>
+
+            <span class="vip-badge ${statusClass}">${escapeHtml(guest.vip_status || 'Regular')}</span>
+
+            <div class="guest-stats">
+              <div class="guest-stat">
+                <div class="guest-stat-label">Total Bookings</div>
+                <div class="guest-stat-value">${totalBookings}</div>
+              </div>
+              <div class="guest-stat">
+                <div class="guest-stat-label">Last Visit</div>
+                <div class="guest-stat-value">${formatDate(guest.last_visit)}</div>
+              </div>
+            </div>
+
+            <div class="guest-meta">Status: ${escapeHtml(isActive)}</div>
+
+            <div class="guest-actions">
+              <button class="btn btn-view" onclick="openDetailsModal(${guest.id})">View</button>
+              <button class="btn btn-edit" onclick="openGuestModal(${guest.id})">Edit</button>
+              <button class="btn btn-delete" onclick="openDeleteModal(${guest.id})">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateGuestCount();
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          ...Auth.headers()
+        }
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        Auth.logout();
+        return { ok: false, auth: false, data: null };
+      }
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      return { ok: response.ok, auth: true, data, status: response.status };
+    }
+
+    function buildGuestQuery() {
+      const params = new URLSearchParams();
+      const search = searchInput.value.trim();
+      const filter = typeFilter.value;
+
+      if (search) params.set('search', search);
+      if (filter === 'active') {
+        params.set('status', 'Active');
+      }
+      if (filter === 'vip') {
+        params.set('vip_status', 'VIP');
+      }
+
+      const qs = params.toString();
+      return qs ? `?${qs}` : '';
+    }
+
+    async function loadGuests() {
+      const result = await fetchJson(GUESTS_API + buildGuestQuery());
+      if (!result.auth) return;
+      if (!result.ok) {
+        guestsContainer.innerHTML = '<div class="empty-state">Failed to load guests.</div>';
+        return;
+      }
+
+      guests = Array.isArray(result.data) ? result.data : [];
+      renderGuestsGrid();
+    }
+
+    async function loadGuestSummary() {
+      const result = await fetchJson(GUESTS_SUMMARY_API);
+      if (!result.auth) return;
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to load guest summary', 'error');
+        return;
+      }
+
+      updateSummaryCards(result.data || {});
+    }
+
+    function resetGuestForm() {
+      guestForm.reset();
+      editingGuestId = null;
+      existingPhotoUrl = '';
+      document.getElementById('guestModalTitle').textContent = 'Add Guest';
+      document.getElementById('guestSaveBtn').textContent = 'Add Guest';
+      guestPhotoPreview.textContent = 'No Photo';
+      guestPhotoPreview.innerHTML = 'No Photo';
+      guestVipStatus.value = 'Regular';
+    }
+
+    function setPhotoPreview(url) {
+      if (url) {
+        guestPhotoPreview.innerHTML = `<img src="${escapeHtml(url)}" alt="Photo">`;
+      } else {
+        guestPhotoPreview.textContent = 'No Photo';
+      }
+    }
+
+    function openGuestModal(guestId = null) {
+      resetGuestForm();
+
+      if (guestId) {
+        const guest = guests.find((item) => item.id === guestId);
+        if (!guest) {
+          showToast('Guest not found', 'error');
+          return;
+        }
+
+        editingGuestId = guest.id;
+        existingPhotoUrl = guest.photo || '';
+
+        document.getElementById('guestModalTitle').textContent = `Edit Guest #${guest.id}`;
+        document.getElementById('guestSaveBtn').textContent = 'Update Guest';
+
+        guestName.value = guest.name || '';
+        guestEmail.value = guest.email || '';
+        guestPhone.value = guest.phone || '';
+        guestAddress.value = guest.address || '';
+        guestIdProof.value = guest.id_proof || '';
+        guestNotes.value = guest.preferences || '';
+        guestVipStatus.value = guest.vip_status || 'Regular';
+        setPhotoPreview(existingPhotoUrl);
+      }
+
+      guestModal.classList.add('open');
+    }
+
+    function closeGuestModal() {
+      guestModal.classList.remove('open');
+      resetGuestForm();
+    }
+
+    async function uploadGuestPhotoIfNeeded() {
+      const file = guestPhoto.files && guestPhoto.files[0] ? guestPhoto.files[0] : null;
+      if (!file) {
+        return existingPhotoUrl || '';
+      }
+
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await fetch(GUEST_UPLOAD_PHOTO_API, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Auth.getToken()}`
+        },
+        body: formData
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        Auth.logout();
+        return null;
+      }
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        showToast(result.error || 'Failed to upload photo', 'error');
+        return null;
+      }
+
+      return result.photo_url || '';
+    }
+
+    function buildGuestPayload(photoUrl) {
+      return {
+        name: guestName.value.trim(),
+        email: guestEmail.value.trim(),
+        phone: guestPhone.value.trim(),
+        address: guestAddress.value.trim(),
+        id_proof: guestIdProof.value.trim(),
+        photo: photoUrl,
+        preferences: guestNotes.value.trim(),
+        vip_status: guestVipStatus.value
+      };
+    }
+
+    function validateGuestForm() {
+      const name = guestName.value.trim();
+      const email = guestEmail.value.trim();
+      const phone = guestPhone.value.trim();
+
+      if (!name || !email || !phone) {
+        showToast('Name, email, and phone are required', 'error');
+        return false;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Invalid email format', 'error');
+        return false;
+      }
+
+      if (!/^\d{10}$/.test(phone)) {
+        showToast('Phone must be exactly 10 digits', 'error');
+        return false;
+      }
+
+      return true;
+    }
+
+    guestForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!validateGuestForm()) return;
+
+      const photoUrl = await uploadGuestPhotoIfNeeded();
+      if (photoUrl === null) return;
+
+      const payload = buildGuestPayload(photoUrl);
+      const isEdit = !!editingGuestId;
+      const url = isEdit ? `${GUESTS_API}/${editingGuestId}` : GUESTS_API;
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const result = await fetchJson(url, {
+        method,
+        body: JSON.stringify(payload)
+      });
+
+      if (!result.auth) return;
+
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to save guest', 'error');
+        return;
+      }
+
+      closeGuestModal();
+      showToast(isEdit ? 'Guest updated successfully' : 'Guest added successfully', 'success');
+      await Promise.all([loadGuestSummary(), loadGuests()]);
+    });
+
+    function openDeleteModal(guestId) {
+      const guest = guests.find((item) => item.id === guestId);
+      if (!guest) {
+        showToast('Guest not found', 'error');
+        return;
+      }
+
+      pendingDeleteId = guestId;
+      document.getElementById('deleteConfirmText').textContent =
+        `Are you sure you want to delete ${guest.name}? This will also remove linked payments.`;
+      deleteModal.classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      deleteModal.classList.remove('open');
+    }
+
+    async function confirmDeleteGuest() {
+      if (!pendingDeleteId) return;
+
+      const result = await fetchJson(`${GUESTS_API}/${pendingDeleteId}`, {
+        method: 'DELETE'
+      });
+
+      if (!result.auth) return;
+
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to delete guest', 'error');
+        return;
+      }
+
+      closeDeleteModal();
+      showToast('Guest deleted successfully', 'success');
+      await Promise.all([loadGuestSummary(), loadGuests()]);
+    }
+
+    function closeDetailsModal() {
+      detailsModal.classList.remove('open');
+      document.getElementById('detailsContent').innerHTML = '';
+    }
+
+    async function openDetailsModal(guestId) {
+      const guest = guests.find((item) => item.id === guestId);
+      if (!guest) {
+        showToast('Guest not found', 'error');
+        return;
+      }
+
+      const result = await fetchJson(`${GUESTS_API}/${guestId}/history`);
+      if (!result.auth) return;
+      if (!result.ok) {
+        showToast((result.data && result.data.error) || 'Failed to load guest details', 'error');
+        return;
+      }
+
+      const history = result.data || {};
+      const bookings = Array.isArray(history.bookings) ? history.bookings : [];
+      const payments = Array.isArray(history.payments) ? history.payments : [];
+
+      document.getElementById('detailsTitle').textContent = `Guest Details - ${guest.name}`;
+
+      const bookingTimeline = bookings.length
+        ? bookings.map((booking) => `
+            <div class="timeline-item">
+              <div class="timeline-main">Room ${escapeHtml(booking.room_number)} | ${escapeHtml(booking.members)} members</div>
+              <div class="timeline-sub">Check-in: ${escapeHtml(booking.check_in_date)} | Check-out: ${escapeHtml(booking.check_out_date)}</div>
+            </div>
+          `).join('')
+        : '<div class="timeline-item"><div class="timeline-main">No booking history found</div></div>';
+
+      const paymentTimeline = payments.length
+        ? payments.map((payment) => `
+            <div class="timeline-item">
+              <div class="timeline-main">${formatCurrency(payment.amount)} | ${escapeHtml(payment.type)} | ${escapeHtml(payment.status)}</div>
+              <div class="timeline-sub">Room ${escapeHtml(payment.room_number)} | ${formatDate(payment.date)}</div>
+            </div>
+          `).join('')
+        : '<div class="timeline-item"><div class="timeline-main">No payment history found</div></div>';
+
+      document.getElementById('detailsContent').innerHTML = `
+        <div class="profile-grid">
+          <div class="profile-card">
+            <div class="profile-avatar">${getAvatarMarkup(guest)}</div>
+            <div class="profile-kv">
+              <div><strong>Name:</strong> ${escapeHtml(guest.name)}</div>
+              <div><strong>Email:</strong> ${escapeHtml(guest.email || '-')}</div>
+              <div><strong>Phone:</strong> ${escapeHtml(guest.phone || '-')}</div>
+              <div><strong>Address:</strong> ${escapeHtml(guest.address || '-')}</div>
+              <div><strong>ID Proof:</strong> ${escapeHtml(guest.id_proof || '-')}</div>
+              <div><strong>Guest Type:</strong> ${escapeHtml(guest.vip_status || 'Regular')}</div>
+              <div><strong>Total Bookings:</strong> ${escapeHtml(String(guest.total_bookings || 0))}</div>
+              <div><strong>Last Visit:</strong> ${escapeHtml(formatDate(guest.last_visit))}</div>
+              <div><strong>Total Spent:</strong> ${escapeHtml(formatCurrency(history.total_spent || 0))}</div>
+              <div><strong>Created:</strong> ${escapeHtml(formatDate(guest.created_date))}</div>
+              <div><strong>Notes:</strong> ${escapeHtml(guest.preferences || '-')}</div>
+            </div>
+          </div>
+
+          <div style="display: grid; gap: 12px;">
+            <div class="profile-timeline">
+              <div class="timeline-title">Booking Timeline</div>
+              <div class="timeline">${bookingTimeline}</div>
+            </div>
+            <div class="profile-timeline">
+              <div class="timeline-title">Payment Timeline</div>
+              <div class="timeline">${paymentTimeline}</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      detailsModal.classList.add('open');
+    }
+
+    guestPhoto.addEventListener('change', () => {
+      const file = guestPhoto.files && guestPhoto.files[0] ? guestPhoto.files[0] : null;
+      if (!file) {
+        setPhotoPreview(existingPhotoUrl || '');
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select a valid image file', 'error');
+        guestPhoto.value = '';
+        setPhotoPreview(existingPhotoUrl || '');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    let searchTimer = null;
+    function debouncedGuestReload() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => loadGuests(), 280);
+    }
+
+    searchInput.addEventListener('input', debouncedGuestReload);
+    typeFilter.addEventListener('change', loadGuests);
+
+    guestModal.addEventListener('click', (event) => {
+      if (event.target === guestModal) closeGuestModal();
+    });
+
+    deleteModal.addEventListener('click', (event) => {
+      if (event.target === deleteModal) closeDeleteModal();
+    });
+
+    detailsModal.addEventListener('click', (event) => {
+      if (event.target === detailsModal) closeDetailsModal();
+    });
+
+    window.openGuestModal = openGuestModal;
+    window.closeGuestModal = closeGuestModal;
+    window.openDeleteModal = openDeleteModal;
+    window.closeDeleteModal = closeDeleteModal;
+    window.confirmDeleteGuest = confirmDeleteGuest;
+    window.openDetailsModal = openDetailsModal;
+    window.closeDetailsModal = closeDetailsModal;
+
+    (async function initGuestsPage() {
+      resetGuestForm();
+      await Promise.all([loadGuestSummary(), loadGuests()]);
+    })();
+  </script>
+</body>
+</html>

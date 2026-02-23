@@ -80,6 +80,21 @@ function renderSidebar(activePage) {
         <a href="${BASE}/dashboard/orders" class="${activePage === 'orders' ? 'active' : ''}">
           <span class="nav-icon">&#128722;</span> Orders
         </a>
+        <a href="${BASE}/dashboard/payments" class="${activePage === 'payments' ? 'active' : ''}">
+          <span class="nav-icon">&#128179;</span> Payments
+        </a>
+        <a href="${BASE}/dashboard/guests" class="${activePage === 'guests' ? 'active' : ''}">
+          <span class="nav-icon">&#128100;</span> Guests
+        </a>
+        <a href="${BASE}/dashboard/reports" class="${activePage === 'reports' ? 'active' : ''}">
+          <span class="nav-icon">&#128202;</span> Reports
+        </a>
+        <a href="${BASE}/dashboard/housekeeping" class="${activePage === 'housekeeping' ? 'active' : ''}">
+          <span class="nav-icon">&#129533;</span> Housekeeping
+        </a>
+        <a href="${BASE}/dashboard/inventory" class="${activePage === 'inventory' ? 'active' : ''}">
+          <span class="nav-icon">&#128230;</span> Inventory
+        </a>
       </nav>
     </div>
   `;
@@ -722,6 +737,11 @@ function getActivePageFromPath(pathname) {
   if (page === 'staff') return 'staff';
   if (page === 'menu') return 'menu';
   if (page === 'orders') return 'orders';
+  if (page === 'payments') return 'payments';
+  if (page === 'guests') return 'guests';
+  if (page === 'reports') return 'reports';
+  if (page === 'housekeeping') return 'housekeeping';
+  if (page === 'inventory') return 'inventory';
   if (page === 'rooms') return 'rooms';
   if (page === 'about') return 'about';
   if (page === 'gallery') return 'gallery';
