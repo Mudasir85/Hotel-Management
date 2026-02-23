@@ -1029,13 +1029,9 @@ function sendPage(pageFile) {
 
 const dashboardPageRoutes = [
   { suffix: '', page: 'dashboard.html' },
-  { suffix: 'rooms', page: 'rooms.html' },
+  { suffix: 'rooms', page: 'dashboard-rooms.html' },
   { suffix: 'bookings', page: 'bookings.html' },
   { suffix: 'staff', page: 'staff.html' },
-  { suffix: 'about', page: 'about.html' },
-  { suffix: 'gallery', page: 'gallery.html' },
-  { suffix: 'blogs', page: 'blogs.html' },
-  { suffix: 'contact', page: 'contact.html' },
   { suffix: 'profile', page: 'profile.html' },
   { suffix: 'settings', page: 'settings.html' }
 ];
@@ -1047,109 +1043,31 @@ for (const route of dashboardPageRoutes) {
 }
 app.get('/sitesh/dashboard/bookings/:id', requireDashboardAuth, sendPage('booking-detail.html'));
 
-// Backward-compatible dashboard routes without /sitesh prefix
+// Dashboard routes without /sitesh prefix (nginx strips /sitesh/ before proxying)
 for (const route of dashboardPageRoutes) {
-  const legacyPath = route.suffix ? `/dashboard/${route.suffix}` : '/dashboard';
-  const canonicalPath = route.suffix ? `/sitesh/dashboard/${route.suffix}` : '/sitesh/dashboard';
-  app.get(legacyPath, requireDashboardAuth, (req, res) => {
-    res.redirect(canonicalPath);
-  });
+  const routePath = route.suffix ? `/dashboard/${route.suffix}` : '/dashboard';
+  app.get(routePath, requireDashboardAuth, sendPage(route.page));
 }
-app.get('/dashboard/bookings/:id', requireDashboardAuth, (req, res) => {
-  res.redirect(`/sitesh/dashboard/bookings/${req.params.id}`);
-});
+app.get('/dashboard/bookings/:id', requireDashboardAuth, sendPage('booking-detail.html'));
 
-// Legacy non-dashboard URLs redirected into /sitesh/dashboard/*
-app.get('/staff', (req, res) => {
-  res.redirect('/sitesh/dashboard/staff');
-});
+// Public routes (nginx strips /sitesh/ before proxying)
+const publicPageRoutes = [
+  { suffix: '', page: 'index.html' },
+  { suffix: 'rooms', page: 'rooms.html' },
+  { suffix: 'about', page: 'about.html' },
+  { suffix: 'gallery', page: 'gallery.html' },
+  { suffix: 'blogs', page: 'blogs.html' },
+  { suffix: 'contact', page: 'contact.html' }
+];
 
-app.get('/bookings', (req, res) => {
-  res.redirect('/sitesh/dashboard/bookings');
-});
-
-app.get('/bookings/:id', (req, res) => {
-  res.redirect(`/sitesh/dashboard/bookings/${req.params.id}`);
-});
-
-app.get('/profile', (req, res) => {
-  res.redirect('/sitesh/dashboard/profile');
-});
-
-app.get('/settings', (req, res) => {
-  res.redirect('/sitesh/dashboard/settings');
-});
-
-// Public routes (canonical under /public)
-app.get('/public', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-app.get('/sitesh/public', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/public/rooms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'rooms.html'));
-});
-app.get('/sitesh/public/rooms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'rooms.html'));
-});
-
-app.get('/public/about', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'about.html'));
-});
-app.get('/sitesh/public/about', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'about.html'));
-});
-
-app.get('/public/gallery', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
-});
-app.get('/sitesh/public/gallery', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
-});
-
-app.get('/public/blogs', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'blogs.html'));
-});
-app.get('/sitesh/public/blogs', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'blogs.html'));
-});
-
-app.get('/public/contact', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'contact.html'));
-});
-app.get('/sitesh/public/contact', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'contact.html'));
-});
-
-// Backward-compatible redirects from old public URLs
-app.get('/rooms', (req, res) => {
-  res.redirect('/sitesh/public/rooms');
-});
-
-app.get('/about', (req, res) => {
-  res.redirect('/sitesh/public/about');
-});
-
-app.get('/gallery', (req, res) => {
-  res.redirect('/sitesh/public/gallery');
-});
-
-app.get('/blogs', (req, res) => {
-  res.redirect('/sitesh/public/blogs');
-});
-
-app.get('/contact', (req, res) => {
-  res.redirect('/sitesh/public/contact');
-});
+for (const route of publicPageRoutes) {
+  const routePath = route.suffix ? `/public/${route.suffix}` : '/public';
+  app.get(routePath, sendPage(route.page));
+}
 
 // Default route
 app.get('/', (req, res) => {
-  res.redirect('/sitesh/public');
-});
-app.get('/sitesh', (req, res) => {
-  res.redirect('/sitesh/public');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server

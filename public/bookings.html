@@ -496,7 +496,7 @@
         if (roomType || price) {
           document.getElementById('ribRoomType').textContent = roomType || 'Room ' + roomNumber;
           document.getElementById('ribRoomNumber').textContent = roomNumber;
-          document.getElementById('ribPrice').textContent = price ? '$' + price : '';
+          document.getElementById('ribPrice').textContent = price || '';
           document.getElementById('roomInfoBanner').classList.add('visible');
         }
 

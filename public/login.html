@@ -222,10 +222,24 @@
   <script>
     const BASE = window.location.pathname.startsWith('/sitesh') ? '/sitesh' : '';
 
-    // Redirect if already logged in
-    if (localStorage.getItem('token')) {
-      window.location.href = BASE + '/dashboard';
-    }
+    // Redirect if already logged in (verify token first to avoid redirect loop)
+    (async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const res = await fetch(BASE + '/api/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+          window.location.href = BASE + '/dashboard';
+        } else {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      } catch {
+        // Network error — don't redirect, let user login fresh
+      }
+    })();
 
     const messageEl = document.getElementById('message');
 
