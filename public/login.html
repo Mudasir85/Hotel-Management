@@ -220,7 +220,7 @@
   </div>
 
   <script>
-    const BASE = '/sitesh';
+    const BASE = window.location.pathname.startsWith('/sitesh') ? '/sitesh' : '';
 
     // Redirect if already logged in
     if (localStorage.getItem('token')) {

@@ -347,6 +347,11 @@ function parseMultipartFormData(buffer, boundary) {
 
 // ─── Auth Routes ──────────────────────────────────────────────────
 
+// GET /api/hello
+app.get('/api/hello', (req, res) => {
+  res.json({ message: 'hello' });
+});
+
 // POST /api/auth/login
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
@@ -1012,6 +1017,9 @@ app.delete('/api/staff/:id', authenticateToken, (req, res) => {
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
+app.get('/sitesh/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
 
 function sendPage(pageFile) {
   return (req, res) => {
@@ -1076,24 +1084,42 @@ app.get('/settings', (req, res) => {
 app.get('/public', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+app.get('/sitesh/public', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.get('/public/rooms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'rooms.html'));
+});
+app.get('/sitesh/public/rooms', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'rooms.html'));
 });
 
 app.get('/public/about', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'about.html'));
 });
+app.get('/sitesh/public/about', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'about.html'));
+});
 
 app.get('/public/gallery', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
+});
+app.get('/sitesh/public/gallery', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
 });
 
 app.get('/public/blogs', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'blogs.html'));
 });
+app.get('/sitesh/public/blogs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blogs.html'));
+});
 
 app.get('/public/contact', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'contact.html'));
+});
+app.get('/sitesh/public/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
 });
 
@@ -1120,6 +1146,9 @@ app.get('/contact', (req, res) => {
 
 // Default route
 app.get('/', (req, res) => {
+  res.redirect('/sitesh/public');
+});
+app.get('/sitesh', (req, res) => {
   res.redirect('/sitesh/public');
 });
 

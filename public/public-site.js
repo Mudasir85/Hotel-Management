@@ -1,4 +1,4 @@
-const PUBLIC_BASE = '/sitesh';
+const PUBLIC_BASE = window.location.pathname.startsWith('/sitesh') ? '/sitesh' : '';
 
 function initPublicSite(activePage) {
   const nav = document.querySelector('.site-nav');

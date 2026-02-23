@@ -1,4 +1,4 @@
-const BASE = '/sitesh';
+const BASE = window.location.pathname.startsWith('/sitesh') ? '/sitesh' : '';
 
 // ─── Auth Utilities ───────────────────────────────────────────────
 const Auth = {
