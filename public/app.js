@@ -1,4 +1,6 @@
-const BASE = window.location.pathname.startsWith('/sitesh') ? '/sitesh' : '';
+// This deployment is served from /sitesh; keep URLs anchored there to avoid
+// generating /dashboard/* links that can 404 behind the reverse proxy.
+const BASE = '/sitesh';
 
 // ─── Auth Utilities ───────────────────────────────────────────────
 const Auth = {
