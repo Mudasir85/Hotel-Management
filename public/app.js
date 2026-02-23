@@ -68,7 +68,7 @@ function renderSidebar(activePage) {
         <a href="${BASE}/bookings" class="${activePage === 'bookings' ? 'active' : ''}">
           <span class="nav-icon">&#128203;</span> Bookings
         </a>
-        <a href="${BASE}/dashboard/staff" class="${activePage === 'staff' ? 'active' : ''}">
+        <a href="${BASE}/staff" class="${activePage === 'staff' ? 'active' : ''}">
           <span class="nav-icon">&#128104;</span> Staff
         </a>
         <a href="${BASE}/about" class="${activePage === 'about' ? 'active' : ''}">
@@ -720,6 +720,7 @@ function getActivePageFromPath(pathname) {
   const afterBase = pathname.slice(BASE.length);
   const segments = afterBase.split('/').filter(Boolean);
   if (segments.length === 0) return 'dashboard';
+  if (segments[0] === 'staff') return 'staff';
   if (segments[0] === 'dashboard' && segments[1] === 'staff') return 'staff';
   if (segments[0] === 'dashboard') return 'dashboard';
   return segments[0];

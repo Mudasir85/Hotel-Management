@@ -955,8 +955,12 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-app.get('/dashboard/staff', (req, res) => {
+app.get('/staff', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'staff.html'));
+});
+
+app.get('/dashboard/staff', (req, res) => {
+  res.redirect('/sitesh/staff');
 });
 
 app.get('/bookings', (req, res) => {
