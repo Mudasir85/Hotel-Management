@@ -221,6 +221,15 @@
 
   <script>
     const BASE = window.location.pathname.startsWith('/sitesh') ? '/sitesh' : '';
+    const nextParamRaw = new URLSearchParams(window.location.search).get('next') || '';
+
+    function getSafeNextPath() {
+      if (!nextParamRaw || !nextParamRaw.startsWith('/')) return BASE + '/dashboard';
+      if (!nextParamRaw.startsWith(BASE + '/dashboard')) return BASE + '/dashboard';
+      return nextParamRaw;
+    }
+
+    const postLoginRedirect = getSafeNextPath();
 
     // Redirect if already logged in (verify token first to avoid redirect loop)
     (async () => {
@@ -231,7 +240,7 @@
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (res.ok) {
-          window.location.href = BASE + '/dashboard';
+          window.location.href = postLoginRedirect;
         } else {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -283,7 +292,7 @@
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = BASE + '/dashboard';
+        window.location.href = postLoginRedirect;
       } catch {
         showMessage('Connection failed. Please try again.', 'error');
       } finally {
@@ -318,7 +327,7 @@
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = BASE + '/dashboard';
+        window.location.href = postLoginRedirect;
       } catch {
         showMessage('Connection failed. Please try again.', 'error');
       } finally {

@@ -32,6 +32,18 @@ const db = new sqlite3.Database('./bookings.db', (err) => {
   console.log('Connected to SQLite database');
 });
 
+// Room capacity map
+const ROOM_CAPACITY = {
+  '101': 2,  // Standard
+  '102': 3,  // Deluxe
+  '103': 4,  // Suite
+  '201': 5,  // Family
+  '202': 3,  // Executive
+  '203': 4   // Penthouse
+};
+
+const TOTAL_ROOMS = 6;
+
 // Create tables
 db.serialize(() => {
   db.run(`
@@ -251,17 +263,6 @@ db.serialize(() => {
   );
 });
 
-// Room capacity map
-const ROOM_CAPACITY = {
-  '101': 2,  // Standard
-  '102': 3,  // Deluxe
-  '103': 4,  // Suite
-  '201': 5,  // Family
-  '202': 3,  // Executive
-  '203': 4   // Penthouse
-};
-
-const TOTAL_ROOMS = 6;
 const STAFF_ROLES = new Set(['Manager', 'Chef', 'Waiter', 'Cashier', 'Helper', 'Receptionist']);
 const STAFF_SHIFTS = new Set(['Morning', 'Evening', 'Full Day']);
 const MENU_CATEGORIES = new Set([

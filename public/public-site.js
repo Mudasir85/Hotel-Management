@@ -39,6 +39,23 @@ function initPublicSite(activePage) {
     });
   });
 
+  document.querySelectorAll('.js-book-now').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      const bookingUrl = btn.getAttribute('data-booking-url') || btn.getAttribute('href') || (PUBLIC_BASE + '/dashboard/bookings');
+      const token = localStorage.getItem('token');
+
+      event.preventDefault();
+      if (token) {
+        window.location.href = bookingUrl;
+        return;
+      }
+
+      const shouldGo = window.confirm('Please sign in to continue with booking. Go to Sign In page now?');
+      if (!shouldGo) return;
+      window.location.href = PUBLIC_BASE + '/login?next=' + encodeURIComponent(bookingUrl);
+    });
+  });
+
   const contactForm = document.getElementById('publicContactForm');
   if (contactForm) {
     contactForm.addEventListener('submit', (event) => {
