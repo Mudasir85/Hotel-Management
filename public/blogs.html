@@ -6,62 +6,90 @@
   <title>Blogs | Royal Hotel</title>
   <link rel="stylesheet" href="/sitesh/public-site.css">
   <style>
-    .blog-detail-panel {
-      margin-top: 36px;
-      border: 1px solid rgba(15, 23, 42, 0.12);
-      border-radius: 16px;
-      overflow: hidden;
-      background: #fff;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-      display: none;
-    }
-
-    .blog-detail-panel.open {
-      display: block;
-    }
-
-    .blog-detail-media {
+    .blog-card-media {
       width: 100%;
-      height: 340px;
+      height: 220px;
       object-fit: cover;
       display: block;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
     }
 
-    .blog-detail-content {
+    .blog-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 999;
+    }
+
+    .blog-modal.open {
+      display: flex;
+    }
+
+    .blog-modal-dialog {
+      width: min(920px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+    }
+
+    .blog-modal-media {
+      width: 100%;
+      height: 360px;
+      object-fit: cover;
+      display: block;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+    }
+
+    .blog-modal-content {
       padding: 24px;
     }
 
-    .blog-detail-title {
-      margin: 0 0 12px;
+    .blog-modal-title {
+      margin: 0 0 10px;
       font-size: clamp(1.4rem, 2.2vw, 2rem);
       color: #0f172a;
     }
 
-    .blog-detail-text {
+    .blog-modal-meta {
+      margin: 0 0 14px;
+      color: #64748b;
+      font-size: 0.95rem;
+    }
+
+    .blog-modal-text {
       margin: 0;
       color: #334155;
       line-height: 1.75;
     }
 
-    .blog-actions {
+    .blog-modal-actions {
+      margin-top: 20px;
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 18px;
+      justify-content: flex-end;
     }
 
-    .blog-meta {
-      margin-top: 10px;
-      color: #64748b;
-      font-size: 0.95rem;
+    body.modal-open {
+      overflow: hidden;
     }
 
     @media (max-width: 768px) {
-      .blog-detail-media {
+      .blog-card-media {
+        height: 190px;
+      }
+
+      .blog-modal-media {
         height: 220px;
       }
 
-      .blog-detail-content {
+      .blog-modal-content {
         padding: 18px;
       }
     }
@@ -89,47 +117,115 @@
       <div class="container">
         <h1 class="section-title reveal">Latest from Royal Journal</h1>
         <p class="section-subtitle reveal">Travel tips, hospitality stories, and updates from inside Royal Hotel.</p>
+
         <div class="grid grid-3">
           <article class="card reveal">
-            <img class="room-media" src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=900&q=80" alt="Weekend stay guide">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1000&q=80" alt="Weekend stay guide">
             <div class="card-body">
               <h3 class="blog-title">How to plan a perfect weekend stay in Delhi</h3>
               <p class="muted">A practical two-day itinerary for travelers who want comfort, food, and city highlights without rush.</p>
               <button class="btn btn-outline js-readmore" type="button" data-blog-id="delhi-weekend">Read More</button>
             </div>
           </article>
+
           <article class="card reveal">
-            <img class="room-media" src="https://images.unsplash.com/photo-1496412705862-e0088f16f791?auto=format&fit=crop&w=900&q=80" alt="Hotel dining trends">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1496412705862-e0088f16f791?auto=format&fit=crop&w=1000&q=80" alt="Hotel dining trends">
             <div class="card-body">
               <h3 class="blog-title">Modern hotel dining trends guests now expect</h3>
               <p class="muted">From local sourcing to flexible meal timings, discover how guest expectations are evolving in hospitality.</p>
               <button class="btn btn-outline js-readmore" type="button" data-blog-id="dining-trends">Read More</button>
             </div>
           </article>
+
           <article class="card reveal">
-            <img class="room-media" src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=900&q=80" alt="Suite decor">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1000&q=80" alt="Suite design">
             <div class="card-body">
               <h3 class="blog-title">Designing suites for comfort and productivity</h3>
-              <p class="muted">A behind-the-scenes look at room layout decisions that improve sleep quality and work convenience.</p>
+              <p class="muted">Room layouts that support both deep rest and productive work in one seamless guest environment.</p>
               <button class="btn btn-outline js-readmore" type="button" data-blog-id="suite-design">Read More</button>
             </div>
           </article>
-        </div>
 
-        <article id="blogDetailPanel" class="blog-detail-panel reveal" aria-live="polite">
-          <img id="blogDetailImage" class="blog-detail-media" src="" alt="Blog detail image">
-          <div class="blog-detail-content">
-            <h2 id="blogDetailTitle" class="blog-detail-title"></h2>
-            <p id="blogDetailMeta" class="blog-meta"></p>
-            <p id="blogDetailBody" class="blog-detail-text"></p>
-            <div class="blog-actions">
-              <button id="closeBlogDetail" type="button" class="btn btn-outline">Close</button>
+          <article class="card reveal">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1000&q=80" alt="Concierge tips">
+            <div class="card-body">
+              <h3 class="blog-title">Concierge secrets for first-time city visitors</h3>
+              <p class="muted">How concierge teams help guests avoid crowds, book smarter, and uncover local favorites.</p>
+              <button class="btn btn-outline js-readmore" type="button" data-blog-id="concierge-secrets">Read More</button>
             </div>
-          </div>
-        </article>
+          </article>
+
+          <article class="card reveal">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1000&q=80" alt="Breakfast ideas">
+            <div class="card-body">
+              <h3 class="blog-title">Breakfast formats guests love in 2026</h3>
+              <p class="muted">Why hybrid buffet-plus-live-counter service improves both speed and guest satisfaction.</p>
+              <button class="btn btn-outline js-readmore" type="button" data-blog-id="breakfast-formats">Read More</button>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1000&q=80" alt="Sustainable operations">
+            <div class="card-body">
+              <h3 class="blog-title">Small sustainability wins that guests notice</h3>
+              <p class="muted">Simple operational updates that reduce waste while visibly improving the guest experience.</p>
+              <button class="btn btn-outline js-readmore" type="button" data-blog-id="sustainability-wins">Read More</button>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1468824357306-a439d58ccb1c?auto=format&fit=crop&w=1000&q=80" alt="Business traveler guide">
+            <div class="card-body">
+              <h3 class="blog-title">Business traveler checklist for smoother stays</h3>
+              <p class="muted">Power access, express laundry, and flexible check-in windows that matter most to professionals.</p>
+              <button class="btn btn-outline js-readmore" type="button" data-blog-id="business-checklist">Read More</button>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1000&q=80" alt="Family travel">
+            <div class="card-body">
+              <h3 class="blog-title">Family-friendly room planning made simple</h3>
+              <p class="muted">A practical way to choose room categories and amenities for stress-free family trips.</p>
+              <button class="btn btn-outline js-readmore" type="button" data-blog-id="family-room-planning">Read More</button>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1000&q=80" alt="Sleep quality">
+            <div class="card-body">
+              <h3 class="blog-title">How hotels improve sleep quality for guests</h3>
+              <p class="muted">The role of acoustics, blackout design, and bedding consistency in better overnight comfort.</p>
+              <button class="btn btn-outline js-readmore" type="button" data-blog-id="sleep-quality">Read More</button>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <img class="blog-card-media" src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1000&q=80" alt="Peak season bookings">
+            <div class="card-body">
+              <h3 class="blog-title">Peak season booking tips for best room rates</h3>
+              <p class="muted">Timing strategies that help guests lock in better rates during high-demand travel windows.</p>
+              <button class="btn btn-outline js-readmore" type="button" data-blog-id="peak-season-rates">Read More</button>
+            </div>
+          </article>
+        </div>
       </div>
     </section>
   </main>
+
+  <div id="blogModal" class="blog-modal" role="dialog" aria-modal="true" aria-labelledby="blogModalTitle">
+    <article class="blog-modal-dialog">
+      <img id="blogModalImage" class="blog-modal-media" src="" alt="Blog detail image">
+      <div class="blog-modal-content">
+        <h2 id="blogModalTitle" class="blog-modal-title"></h2>
+        <p id="blogModalMeta" class="blog-modal-meta"></p>
+        <p id="blogModalBody" class="blog-modal-text"></p>
+        <div class="blog-modal-actions">
+          <button id="closeBlogModal" type="button" class="btn btn-outline">Close</button>
+        </div>
+      </div>
+    </article>
+  </div>
 
   <footer class="site-footer">
     <div class="container"><p class="copyright">© 2026 Royal Hotel. All rights reserved.</p></div>
@@ -142,54 +238,114 @@
     const blogDetails = {
       'delhi-weekend': {
         title: 'How to plan a perfect weekend stay in Delhi',
-        image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1400&q=80',
+        image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1600&q=80',
         meta: 'Travel Guide | 6 min read',
-        body: 'Start your weekend with an early check-in and a calm breakfast before exploring the city center. Keep Day 1 for major landmarks and local markets, then reserve Day 2 for relaxed café stops and cultural spaces. Plan transport and dining windows in advance, keep one flexible slot for rest, and finish with an evening at the hotel lounge for a stress-free close to your trip.'
+        body: 'Start your weekend with an early check-in and a calm breakfast before exploring the city center. Keep day one for major landmarks and markets, then reserve day two for relaxed cafes and cultural spaces. Pre-book transport and dinner to avoid long waits, keep a buffer for rest, and end with a quiet lounge evening for a smooth trip close.'
       },
       'dining-trends': {
         title: 'Modern hotel dining trends guests now expect',
-        image: 'https://images.unsplash.com/photo-1496412705862-e0088f16f791?auto=format&fit=crop&w=1400&q=80',
+        image: 'https://images.unsplash.com/photo-1496412705862-e0088f16f791?auto=format&fit=crop&w=1600&q=80',
         meta: 'Hospitality | 5 min read',
-        body: 'Guests increasingly value clear ingredient sourcing, customizable meals, and extended serving windows. Hotels that combine local flavors with lighter, healthier options see stronger guest satisfaction and repeat bookings. A practical approach is to maintain a compact core menu, add rotating seasonal specials, and enable quick in-room ordering with transparent preparation times.'
+        body: 'Guests now expect transparent ingredients, flexible timings, and lighter meal choices. Hotels that combine regional specialties with balanced options see better satisfaction and stronger repeat stays. A focused menu with seasonal specials and dependable in-room ordering is often the best operating model.'
       },
       'suite-design': {
         title: 'Designing suites for comfort and productivity',
-        image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1400&q=80',
+        image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1600&q=80',
         meta: 'Operations | 7 min read',
-        body: 'Great suite design balances rest and function. Prioritize layered lighting, acoustic separation, and ergonomic workspaces to support both leisure and business travelers. Thoughtful zoning for sleep, work, and dining improves comfort, while details like blackout curtains, power access near seating, and uncluttered storage increase convenience during longer stays.'
+        body: 'Effective suite design balances calm rest with practical work zones. Prioritize layered lighting, ergonomic seating, and controlled acoustics. Simple details like bedside charging, blackout curtains, and uncluttered storage consistently improve guest convenience across short and long stays.'
+      },
+      'concierge-secrets': {
+        title: 'Concierge secrets for first-time city visitors',
+        image: 'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1600&q=80',
+        meta: 'Guest Services | 4 min read',
+        body: 'A strong concierge desk can save guests hours each day. The best approach is to plan around peak crowd windows, reserve transport in advance, and blend landmark visits with nearby local food options. This gives first-time visitors a better city experience with less fatigue.'
+      },
+      'breakfast-formats': {
+        title: 'Breakfast formats guests love in 2026',
+        image: 'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1600&q=80',
+        meta: 'F&B | 5 min read',
+        body: 'Hybrid breakfast service is becoming the most guest-friendly model. A curated buffet for speed, paired with a small live counter for freshness, keeps wait times low while preserving quality. Clear labeling and quick takeaway options are now standard expectations.'
+      },
+      'sustainability-wins': {
+        title: 'Small sustainability wins that guests notice',
+        image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1600&q=80',
+        meta: 'Sustainability | 6 min read',
+        body: 'Visible sustainability upgrades build trust quickly. Refillable amenities, optional towel reuse, and smart room controls reduce waste and operating cost without lowering comfort. Communicating these changes clearly in-room helps guests participate and improves brand perception.'
+      },
+      'business-checklist': {
+        title: 'Business traveler checklist for smoother stays',
+        image: 'https://images.unsplash.com/photo-1468824357306-a439d58ccb1c?auto=format&fit=crop&w=1600&q=80',
+        meta: 'Business Travel | 5 min read',
+        body: 'Business guests prioritize predictable convenience: fast check-in, stable Wi-Fi, laundry turnaround, and quiet workspaces. Hotels that package these basics clearly at booking time reduce front-desk friction and increase loyalty from repeat corporate travelers.'
+      },
+      'family-room-planning': {
+        title: 'Family-friendly room planning made simple',
+        image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1600&q=80',
+        meta: 'Family Travel | 6 min read',
+        body: 'Family travel works best when room type, bedding layout, and meal timings are planned before arrival. Connecting-room options, child-safe essentials, and flexible breakfast windows remove most common stress points and create a smoother stay for everyone.'
+      },
+      'sleep-quality': {
+        title: 'How hotels improve sleep quality for guests',
+        image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=80',
+        meta: 'Wellness | 5 min read',
+        body: 'Sleep quality depends on consistency. Reliable mattress standards, blackout control, quieter HVAC behavior, and thoughtful lighting transitions help guests fall asleep faster and wake up better. These factors directly influence overall stay ratings.'
+      },
+      'peak-season-rates': {
+        title: 'Peak season booking tips for best room rates',
+        image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80',
+        meta: 'Revenue & Booking | 4 min read',
+        body: 'During high-demand periods, booking 3 to 5 weeks ahead often provides the best mix of availability and value. Guests should compare cancellation policies, choose weekday check-ins when possible, and bundle breakfast offers when they lower total trip cost.'
       }
     };
 
-    const panel = document.getElementById('blogDetailPanel');
-    const detailImage = document.getElementById('blogDetailImage');
-    const detailTitle = document.getElementById('blogDetailTitle');
-    const detailMeta = document.getElementById('blogDetailMeta');
-    const detailBody = document.getElementById('blogDetailBody');
-    const closeBtn = document.getElementById('closeBlogDetail');
+    const modal = document.getElementById('blogModal');
+    const modalImage = document.getElementById('blogModalImage');
+    const modalTitle = document.getElementById('blogModalTitle');
+    const modalMeta = document.getElementById('blogModalMeta');
+    const modalBody = document.getElementById('blogModalBody');
+    const closeModalBtn = document.getElementById('closeBlogModal');
 
-    function openBlogDetail(blogId) {
+    function openBlogModal(blogId) {
       const blog = blogDetails[blogId];
-      if (!blog || !panel) return;
+      if (!blog || !modal) return;
 
-      detailImage.src = blog.image;
-      detailImage.alt = blog.title;
-      detailTitle.textContent = blog.title;
-      detailMeta.textContent = blog.meta;
-      detailBody.textContent = blog.body;
+      modalImage.src = blog.image;
+      modalImage.alt = blog.title;
+      modalTitle.textContent = blog.title;
+      modalMeta.textContent = blog.meta;
+      modalBody.textContent = blog.body;
 
-      panel.classList.add('open');
-      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      modal.classList.add('open');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeBlogModal() {
+      if (!modal) return;
+      modal.classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
     document.querySelectorAll('.js-readmore').forEach((button) => {
-      button.addEventListener('click', () => openBlogDetail(button.dataset.blogId));
+      button.addEventListener('click', () => openBlogModal(button.dataset.blogId));
     });
 
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        panel.classList.remove('open');
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener('click', closeBlogModal);
+    }
+
+    if (modal) {
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          closeBlogModal();
+        }
       });
     }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && modal && modal.classList.contains('open')) {
+        closeBlogModal();
+      }
+    });
   </script>
 </body>
 </html>
