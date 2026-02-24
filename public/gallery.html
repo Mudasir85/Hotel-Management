@@ -5,6 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gallery | Royal Hotel</title>
   <link rel="stylesheet" href="/sitesh/public-site.css">
+  <style>
+    .gallery-item img {
+      width: 100%;
+      display: block;
+      cursor: zoom-in;
+    }
+
+    .gallery-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .gallery-modal.open {
+      display: flex;
+    }
+
+    .gallery-modal-content {
+      position: relative;
+      width: min(1100px, 100%);
+    }
+
+    .gallery-modal-image {
+      width: 100%;
+      max-height: 86vh;
+      object-fit: contain;
+      border-radius: 12px;
+      display: block;
+      background: #111827;
+    }
+
+    .gallery-modal-close {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.82);
+      color: #fff;
+      font-size: 1.5rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .gallery-modal-caption {
+      margin-top: 10px;
+      text-align: center;
+      color: #e2e8f0;
+    }
+
+    body.gallery-modal-open {
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -29,24 +90,89 @@
         <h1 class="section-title reveal">Gallery</h1>
         <p class="section-subtitle reveal">A quick look at our rooms, dining, events, and curated guest experiences.</p>
         <div class="gallery-grid">
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=900&q=80" alt="Hotel exterior"></figure>
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=900&q=80" alt="Lobby"></figure>
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=900&q=80" alt="Room"></figure>
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=80" alt="Dining"></figure>
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=900&q=80" alt="Pool"></figure>
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=900&q=80" alt="Suite"></figure>
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=900&q=80" alt="Bathroom"></figure>
-          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=900&q=80" alt="Restaurant"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=80" alt="Hotel exterior at sunset"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=1200&q=80" alt="Main lobby"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1200&q=80" alt="Deluxe room"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80" alt="Fine dining setup"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80" alt="Poolside lounge"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80" alt="Executive suite"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1200&q=80" alt="Luxury bathroom"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=1200&q=80" alt="Restaurant seating"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1521783988139-893ce154d7af?auto=format&fit=crop&w=1200&q=80" alt="Rooftop terrace"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80" alt="Wedding hall decor"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1468824357306-a439d58ccb1c?auto=format&fit=crop&w=1200&q=80" alt="Business meeting room"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1535827841776-24afc1e255ac?auto=format&fit=crop&w=1200&q=80" alt="Spa and wellness area"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=1200&q=80" alt="Evening bar counter"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1590490359854-dfba19688d70?auto=format&fit=crop&w=1200&q=80" alt="Family room setup"></figure>
+          <figure class="gallery-item reveal"><img src="https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1200&q=80" alt="Breakfast buffet"></figure>
         </div>
       </div>
     </section>
   </main>
+
+  <div id="galleryModal" class="gallery-modal" role="dialog" aria-modal="true" aria-label="Image preview">
+    <div class="gallery-modal-content">
+      <button id="galleryModalClose" class="gallery-modal-close" type="button" aria-label="Close image preview">&times;</button>
+      <img id="galleryModalImage" class="gallery-modal-image" src="" alt="">
+      <p id="galleryModalCaption" class="gallery-modal-caption"></p>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="container"><p class="copyright">© 2026 Royal Hotel. All rights reserved.</p></div>
   </footer>
 
   <script src="/sitesh/public-site.js"></script>
-  <script>initPublicSite('gallery');</script>
+  <script>
+    initPublicSite('gallery');
+
+    const galleryModal = document.getElementById('galleryModal');
+    const galleryModalImage = document.getElementById('galleryModalImage');
+    const galleryModalCaption = document.getElementById('galleryModalCaption');
+    const galleryModalClose = document.getElementById('galleryModalClose');
+    const galleryImages = document.querySelectorAll('.gallery-item img');
+
+    function openGalleryModal(image) {
+      if (!galleryModal || !galleryModalImage || !galleryModalCaption) return;
+
+      galleryModalImage.src = image.src;
+      galleryModalImage.alt = image.alt;
+      galleryModalCaption.textContent = image.alt;
+      galleryModal.classList.add('open');
+      document.body.classList.add('gallery-modal-open');
+    }
+
+    function closeGalleryModal() {
+      if (!galleryModal || !galleryModalImage || !galleryModalCaption) return;
+
+      galleryModal.classList.remove('open');
+      galleryModalImage.src = '';
+      galleryModalImage.alt = '';
+      galleryModalCaption.textContent = '';
+      document.body.classList.remove('gallery-modal-open');
+    }
+
+    galleryImages.forEach((image) => {
+      image.addEventListener('click', () => openGalleryModal(image));
+    });
+
+    if (galleryModalClose) {
+      galleryModalClose.addEventListener('click', closeGalleryModal);
+    }
+
+    if (galleryModal) {
+      galleryModal.addEventListener('click', (event) => {
+        if (event.target === galleryModal) {
+          closeGalleryModal();
+        }
+      });
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && galleryModal && galleryModal.classList.contains('open')) {
+        closeGalleryModal();
+      }
+    });
+  </script>
 </body>
 </html>
