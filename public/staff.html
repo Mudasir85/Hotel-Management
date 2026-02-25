@@ -59,6 +59,49 @@
       background: #1557b0;
     }
 
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .filter-bar input,
+    .filter-bar select {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      background: #fff;
+    }
+
+    .filter-bar input:focus,
+    .filter-bar select:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .btn-clear {
+      background: #e5e7eb;
+      color: #1f2937;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .btn-clear:hover {
+      background: #d1d5db;
+    }
+
+    .filter-count {
+      font-size: 0.84rem;
+      color: #6b7280;
+      margin-bottom: 12px;
+      min-height: 19px;
+    }
+
     .staff-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -357,6 +400,10 @@
         align-items: stretch;
       }
 
+      .filter-bar {
+        grid-template-columns: 1fr;
+      }
+
       .btn-add {
         width: 100%;
       }
@@ -380,6 +427,32 @@
         <button class="btn btn-add" onclick="openStaffModal()">+ Add Staff</button>
       </div>
 
+      <div class="filter-bar">
+        <input type="text" id="staffSearch" placeholder="Search name, role, phone, email">
+        <select id="staffRoleFilter">
+          <option value="">All roles</option>
+          <option value="Manager">Manager</option>
+          <option value="Chef">Chef</option>
+          <option value="Waiter">Waiter</option>
+          <option value="Cashier">Cashier</option>
+          <option value="Helper">Helper</option>
+          <option value="Receptionist">Receptionist</option>
+        </select>
+        <select id="staffShiftFilter">
+          <option value="">All shifts</option>
+          <option value="Morning">Morning</option>
+          <option value="Evening">Evening</option>
+          <option value="Full Day">Full Day</option>
+        </select>
+        <select id="staffDutyFilter">
+          <option value="">All duty statuses</option>
+          <option value="on">On Duty</option>
+          <option value="off">Off Duty</option>
+        </select>
+        <button type="button" class="btn btn-clear" id="clearFiltersBtn">Clear</button>
+      </div>
+
+      <div class="filter-count" id="filterCount"></div>
       <div id="staffContainer" class="staff-grid"></div>
     </div>
   </div>
@@ -454,13 +527,25 @@
     const STAFF_API = BASE + '/api/staff';
     const staffContainer = document.getElementById('staffContainer');
     const dutyCountEl = document.getElementById('dutyCount');
+    const filterCountEl = document.getElementById('filterCount');
     const staffModal = document.getElementById('staffModal');
     const deleteModal = document.getElementById('deleteModal');
     const staffForm = document.getElementById('staffForm');
+    const staffSearch = document.getElementById('staffSearch');
+    const staffRoleFilter = document.getElementById('staffRoleFilter');
+    const staffShiftFilter = document.getElementById('staffShiftFilter');
+    const staffDutyFilter = document.getElementById('staffDutyFilter');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
     let staffList = [];
     let editingStaffId = null;
     let pendingDeleteId = null;
+    const filters = {
+      search: '',
+      role: '',
+      shift: '',
+      duty: ''
+    };
 
     function escapeHtml(value) {
       return String(value || '')
@@ -476,16 +561,62 @@
       dutyCountEl.textContent = `${onDuty} on duty today`;
     }
 
+    function getFilteredStaff() {
+      const search = filters.search.toLowerCase();
+
+      return staffList.filter((staff) => {
+        if (filters.role && staff.role !== filters.role) return false;
+        if (filters.shift && staff.shift !== filters.shift) return false;
+        if (filters.duty === 'on' && !staff.duty_status) return false;
+        if (filters.duty === 'off' && !!staff.duty_status) return false;
+
+        if (!search) return true;
+
+        return [
+          staff.name,
+          staff.role,
+          staff.shift,
+          staff.phone,
+          staff.email
+        ].some((value) => String(value || '').toLowerCase().includes(search));
+      });
+    }
+
+    function updateFilterCount(filteredCount) {
+      if (!staffList.length) {
+        filterCountEl.textContent = '';
+        return;
+      }
+
+      if (filteredCount === staffList.length) {
+        filterCountEl.textContent = `Showing all ${staffList.length} staff members`;
+        return;
+      }
+
+      filterCountEl.textContent = `Showing ${filteredCount} of ${staffList.length} staff members`;
+    }
+
     function renderStaffCards() {
       if (!staffList.length) {
         staffContainer.className = '';
         staffContainer.innerHTML = '<div class="empty-state">No staff members added yet.</div>';
+        updateFilterCount(0);
+        updateDutyCount();
+        return;
+      }
+
+      const filteredStaff = getFilteredStaff();
+      updateFilterCount(filteredStaff.length);
+
+      if (!filteredStaff.length) {
+        staffContainer.className = '';
+        staffContainer.innerHTML = '<div class="empty-state">No staff members match the current filters.</div>';
         updateDutyCount();
         return;
       }
 
       staffContainer.className = 'staff-grid';
-      staffContainer.innerHTML = staffList.map((staff) => {
+      staffContainer.innerHTML = filteredStaff.map((staff) => {
         const dutyClass = staff.duty_status ? 'on' : 'off';
         const dutyLabel = staff.duty_status ? 'ON DUTY' : 'OFF DUTY';
         const safeName = escapeHtml(staff.name);
@@ -527,6 +658,43 @@
       }).join('');
 
       updateDutyCount();
+    }
+
+    function clearFilters() {
+      filters.search = '';
+      filters.role = '';
+      filters.shift = '';
+      filters.duty = '';
+
+      staffSearch.value = '';
+      staffRoleFilter.value = '';
+      staffShiftFilter.value = '';
+      staffDutyFilter.value = '';
+      renderStaffCards();
+    }
+
+    function bindFilterEvents() {
+      staffSearch.addEventListener('input', () => {
+        filters.search = staffSearch.value.trim();
+        renderStaffCards();
+      });
+
+      staffRoleFilter.addEventListener('change', () => {
+        filters.role = staffRoleFilter.value;
+        renderStaffCards();
+      });
+
+      staffShiftFilter.addEventListener('change', () => {
+        filters.shift = staffShiftFilter.value;
+        renderStaffCards();
+      });
+
+      staffDutyFilter.addEventListener('change', () => {
+        filters.duty = staffDutyFilter.value;
+        renderStaffCards();
+      });
+
+      clearFiltersBtn.addEventListener('click', clearFilters);
     }
 
     async function loadStaff() {
@@ -727,6 +895,7 @@
     window.confirmDeleteStaff = confirmDeleteStaff;
     window.toggleDutyStatus = toggleDutyStatus;
 
+    bindFilterEvents();
     loadStaff();
   </script>
 </body>
