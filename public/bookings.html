@@ -32,6 +32,10 @@
       color: #1a73e8;
     }
 
+    .bookings-shell {
+      margin-bottom: 12px;
+    }
+
     .card-head {
       display: flex;
       align-items: center;
@@ -339,8 +343,7 @@
 
   <div class="main-content">
     <div class="container">
-      <!-- Bookings Table -->
-      <div class="card">
+      <div class="bookings-shell">
         <div class="card-head">
           <h2>Current Bookings</h2>
           <button id="openCreateModalBtn" class="btn btn-primary" type="button">New Booking</button>
@@ -362,6 +365,9 @@
             <option value="20">20 / page</option>
           </select>
         </div>
+      </div>
+      <!-- Bookings Table -->
+      <div class="card">
         <div id="bookingMeta" class="table-meta"></div>
         <div id="bookingsContainer">
           <div class="empty-state">Loading bookings...</div>
