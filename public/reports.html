@@ -103,6 +103,7 @@
 
     const charts = { revenue: null, occupancy: null, menu: null };
     let lastReport = null;
+    let loadRequestSeq = 0;
 
     function esc(v) { return String(v || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function money(v) { return `₹${Number(v || 0).toFixed(0)}`; }
@@ -114,6 +115,18 @@
     function parseISO(value) {
       const d = new Date(value);
       return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function ensureChartsReady(timeoutMs = 3000) {
+      const start = Date.now();
+      while (typeof Chart === 'undefined' && Date.now() - start < timeoutMs) {
+        await sleep(100);
+      }
+      return typeof Chart !== 'undefined';
     }
 
     function getWindow(range) {
@@ -172,7 +185,20 @@
       };
     }
 
+    function revenueSeriesFromOverview(overview) {
+      const trend = Array.isArray(overview && overview.revenue_trend) ? overview.revenue_trend : [];
+      const labels = trend.map((row) => row.day).filter(Boolean);
+      const totals = trend.map((row) => Number(row && row.value ? row.value : 0));
+      return {
+        labels,
+        room: labels.map(() => 0),
+        food: labels.map(() => 0),
+        total: totals
+      };
+    }
+
     function renderRevenueChart(series) {
+      if (typeof Chart === 'undefined') return;
       if (charts.revenue) charts.revenue.destroy();
       charts.revenue = new Chart(document.getElementById('revenueChart'), {
         type: 'line',
@@ -193,6 +219,7 @@
     }
 
     function renderOccupancyChart(rows) {
+      if (typeof Chart === 'undefined') return;
       if (charts.occupancy) charts.occupancy.destroy();
       charts.occupancy = new Chart(document.getElementById('occupancyChart'), {
         type: 'bar',
@@ -213,6 +240,7 @@
     }
 
     function renderMenuChart(items) {
+      if (typeof Chart === 'undefined') return;
       if (charts.menu) charts.menu.destroy();
       charts.menu = new Chart(document.getElementById('menuChart'), {
         type: 'bar',
@@ -259,33 +287,69 @@
       return rows;
     }
 
+    async function fetchJsonWithRetry(url, options = {}, retries = 2, retryDelayMs = 250) {
+      for (let attempt = 0; attempt <= retries; attempt += 1) {
+        try {
+          const response = await fetch(url, options);
+          if (response.status === 401 || response.status === 403) {
+            return { authError: true, status: response.status };
+          }
+          if (!response.ok) {
+            const retriable = response.status >= 500 || response.status === 429;
+            if (retriable && attempt < retries) {
+              await sleep(retryDelayMs * (attempt + 1));
+              continue;
+            }
+            return { ok: false, status: response.status };
+          }
+
+          const data = await response.json();
+          return { ok: true, data };
+        } catch (error) {
+          if (attempt < retries) {
+            await sleep(retryDelayMs * (attempt + 1));
+            continue;
+          }
+          return { ok: false, error };
+        }
+      }
+      return { ok: false };
+    }
+
     async function loadReports() {
       const range = getRange();
+      const requestId = ++loadRequestSeq;
       try {
-        const [overviewRes, paymentsRes, ordersRes, bookingsRes] = await Promise.all([
-          fetch(`${REPORT_API}?range=${encodeURIComponent(range)}`, { headers: Auth.headers() }),
-          fetch(PAYMENTS_API, { headers: Auth.headers() }),
-          fetch(ORDERS_API, { headers: Auth.headers() }),
-          fetch(BOOKINGS_API, { headers: Auth.headers() })
+        const [overviewResult, paymentsResult, ordersResult, bookingsResult] = await Promise.all([
+          fetchJsonWithRetry(`${REPORT_API}?range=${encodeURIComponent(range)}`, { headers: Auth.headers() }),
+          fetchJsonWithRetry(PAYMENTS_API, { headers: Auth.headers() }),
+          fetchJsonWithRetry(ORDERS_API, { headers: Auth.headers() }),
+          fetchJsonWithRetry(BOOKINGS_API, { headers: Auth.headers() })
         ]);
 
-        if ([overviewRes, paymentsRes, ordersRes, bookingsRes].some((r) => r.status === 401 || r.status === 403)) {
+        if (requestId !== loadRequestSeq) return;
+
+        if ([overviewResult, paymentsResult, ordersResult, bookingsResult].some((r) => r && r.authError)) {
           return Auth.logout();
         }
-        if (!overviewRes.ok || !paymentsRes.ok || !ordersRes.ok || !bookingsRes.ok) {
+        if (!overviewResult || !overviewResult.ok) {
           showToast('Failed to load reports data', 'error');
           return;
         }
 
-        const overview = await overviewRes.json();
-        const payments = await paymentsRes.json();
-        const orders = await ordersRes.json();
-        const bookings = await bookingsRes.json();
+        const overview = overviewResult.data || {};
+        const payments = paymentsResult && paymentsResult.ok && Array.isArray(paymentsResult.data) ? paymentsResult.data : [];
+        const orders = ordersResult && ordersResult.ok && Array.isArray(ordersResult.data) ? ordersResult.data : [];
+        const bookings = bookingsResult && bookingsResult.ok && Array.isArray(bookingsResult.data) ? bookingsResult.data : [];
 
-        const revenue = buildRevenueSeries(payments, range);
+        const revenue = payments.length ? buildRevenueSeries(payments, range) : revenueSeriesFromOverview(overview);
         const totalRevenue = revenue.total.reduce((sum, v) => sum + Number(v || 0), 0);
-        const totalOrders = (orders || []).filter((o) => inRange(o.order_date, range)).length;
-        const totalBookings = (bookings || []).filter((b) => inRange(b.check_in_date, range)).length;
+        const totalOrders = orders.length
+          ? orders.filter((o) => inRange(o.order_date, range)).length
+          : Number(overview.total_orders || 0);
+        const totalBookings = bookings.length
+          ? bookings.filter((b) => inRange(b.check_in_date, range)).length
+          : Number(overview.total_bookings || 0);
 
         const payload = {
           range,
@@ -300,11 +364,24 @@
 
         lastReport = payload;
         setSummary(payload);
-        renderRevenueChart(payload.revenue);
-        renderOccupancyChart(payload.occupancy);
-        renderMenuChart(payload.topMenu);
-        showToast('Reports updated', 'success', 1600);
+        const chartsReady = await ensureChartsReady();
+        if (requestId !== loadRequestSeq) return;
+        if (chartsReady) {
+          renderRevenueChart(payload.revenue);
+          renderOccupancyChart(payload.occupancy);
+          renderMenuChart(payload.topMenu);
+        }
+
+        const partialFailures = [paymentsResult, ordersResult, bookingsResult].some((r) => !r || !r.ok);
+        if (!chartsReady) {
+          showToast('Report data updated. Charts are still loading.', 'info', 2200);
+        } else if (partialFailures) {
+          showToast('Report loaded with partial data', 'info', 2200);
+        } else {
+          showToast('Reports updated', 'success', 1600);
+        }
       } catch {
+        if (requestId !== loadRequestSeq) return;
         showToast('Failed to load reports', 'error');
       }
     }
