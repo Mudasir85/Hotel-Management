@@ -59,6 +59,59 @@
       background: #1557b0;
     }
 
+    .menu-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .menu-filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-input,
+    .filter-select {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #fff;
+      color: #111827;
+      font-size: 0.9rem;
+      padding: 9px 11px;
+      min-height: 38px;
+    }
+
+    .filter-input {
+      min-width: 220px;
+    }
+
+    .filter-select {
+      min-width: 180px;
+    }
+
+    .filter-input:focus,
+    .filter-select:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .btn-clear {
+      background: #e5e7eb;
+      color: #374151;
+      padding: 9px 12px;
+      font-size: 0.85rem;
+    }
+
+    .btn-clear:hover {
+      background: #d1d5db;
+    }
+
     .menu-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -327,6 +380,16 @@
         <button class="btn btn-add" onclick="openMenuModal()">+ Add Menu Item</button>
       </div>
 
+      <div class="menu-toolbar">
+        <div class="menu-filters">
+          <input id="menuSearch" class="filter-input" type="text" placeholder="Search dish, category, description">
+          <select id="menuCategoryFilter" class="filter-select">
+            <option value="">All categories</option>
+          </select>
+          <button type="button" id="clearMenuFilters" class="btn btn-clear">Clear</button>
+        </div>
+      </div>
+
       <div id="menuContainer" class="menu-grid"></div>
     </div>
   </div>
@@ -401,8 +464,12 @@
     const menuModal = document.getElementById('menuModal');
     const deleteModal = document.getElementById('deleteModal');
     const menuForm = document.getElementById('menuForm');
+    const menuSearchInput = document.getElementById('menuSearch');
+    const menuCategoryFilter = document.getElementById('menuCategoryFilter');
+    const clearMenuFiltersBtn = document.getElementById('clearMenuFilters');
 
     let menuItems = [];
+    let filteredMenuItems = [];
     let editingMenuId = null;
     let pendingDeleteId = null;
     const CATEGORY_IMAGE_THEME = {
@@ -425,8 +492,37 @@
         .replace(/'/g, '&#39;');
     }
 
-    function updateMenuCount() {
-      menuCountEl.textContent = `${menuItems.length} items in menu`;
+    function updateMenuCount(total, visible) {
+      if (!total) {
+        menuCountEl.textContent = '0 items in menu';
+        return;
+      }
+
+      if (total === visible) {
+        menuCountEl.textContent = `${total} items in menu`;
+        return;
+      }
+
+      menuCountEl.textContent = `${visible} of ${total} items in menu`;
+    }
+
+    function normalizeText(value) {
+      return String(value || '').toLowerCase().trim();
+    }
+
+    function populateCategoryFilterOptions() {
+      const categories = [...new Set(menuItems
+        .map((item) => String(item.category || '').trim())
+        .filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+      const selected = menuCategoryFilter.value;
+
+      menuCategoryFilter.innerHTML = '<option value="">All categories</option>' +
+        categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
+
+      if (categories.includes(selected)) {
+        menuCategoryFilter.value = selected;
+      }
     }
 
     function buildMenuSvgDataUrl(item) {
@@ -460,16 +556,23 @@
       return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     }
 
-    function renderMenuCards() {
+    function renderMenuCards(items) {
       if (!menuItems.length) {
         menuContainer.className = '';
         menuContainer.innerHTML = '<div class="empty-state">No menu items found.</div>';
-        updateMenuCount();
+        updateMenuCount(0, 0);
+        return;
+      }
+
+      if (!items.length) {
+        menuContainer.className = '';
+        menuContainer.innerHTML = '<div class="empty-state">No menu items match your search/filter.</div>';
+        updateMenuCount(menuItems.length, 0);
         return;
       }
 
       menuContainer.className = 'menu-grid';
-      menuContainer.innerHTML = menuItems.map((item) => {
+      menuContainer.innerHTML = items.map((item) => {
         const safeName = escapeHtml(item.name);
         const safeCategory = escapeHtml(item.category);
         const safeDescription = escapeHtml(item.description);
@@ -496,7 +599,23 @@
         `;
       }).join('');
 
-      updateMenuCount();
+      updateMenuCount(menuItems.length, items.length);
+    }
+
+    function applyMenuFilters() {
+      const searchTerm = normalizeText(menuSearchInput.value);
+      const selectedCategory = menuCategoryFilter.value;
+
+      filteredMenuItems = menuItems.filter((item) => {
+        const matchesCategory = !selectedCategory || item.category === selectedCategory;
+        if (!matchesCategory) return false;
+
+        if (!searchTerm) return true;
+        const haystack = normalizeText(`${item.name} ${item.category} ${item.description}`);
+        return haystack.includes(searchTerm);
+      });
+
+      renderMenuCards(filteredMenuItems);
     }
 
     async function loadMenuItems() {
@@ -515,7 +634,8 @@
         }
 
         menuItems = await response.json();
-        renderMenuCards();
+        populateCategoryFilterOptions();
+        applyMenuFilters();
       } catch {
         menuContainer.className = '';
         menuContainer.innerHTML = '<div class="empty-state">Failed to load menu items.</div>';
@@ -663,6 +783,14 @@
     window.openDeleteModal = openDeleteModal;
     window.closeDeleteModal = closeDeleteModal;
     window.confirmDeleteMenuItem = confirmDeleteMenuItem;
+
+    menuSearchInput.addEventListener('input', applyMenuFilters);
+    menuCategoryFilter.addEventListener('change', applyMenuFilters);
+    clearMenuFiltersBtn.addEventListener('click', () => {
+      menuSearchInput.value = '';
+      menuCategoryFilter.value = '';
+      applyMenuFilters();
+    });
 
     loadMenuItems();
   </script>
