@@ -59,6 +59,50 @@
       background: #1557b0;
     }
 
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 14px;
+      align-items: center;
+    }
+
+    .filter-bar input,
+    .filter-bar select {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      background: #fff;
+      font-family: inherit;
+    }
+
+    .filter-bar input:focus,
+    .filter-bar select:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+    }
+
+    .btn-clear {
+      background: #e5e7eb;
+      color: #1f2937;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .btn-clear:hover {
+      background: #d1d5db;
+    }
+
+    .filter-count {
+      font-size: 0.84rem;
+      color: #6b7280;
+      margin-bottom: 12px;
+      min-height: 19px;
+    }
+
     .card {
       background: #fff;
       border-radius: 12px;
@@ -361,6 +405,10 @@
         width: 100%;
       }
 
+      .filter-bar {
+        grid-template-columns: 1fr;
+      }
+
       .form-grid {
         grid-template-columns: 1fr;
       }
@@ -388,6 +436,20 @@
         </div>
         <button class="btn btn-add" onclick="openOrderModal()">+ New Order</button>
       </div>
+
+      <div class="filter-bar">
+        <input type="text" id="orderSearch" placeholder="Search order, room, status, item">
+        <select id="orderStatusFilter">
+          <option value="">All statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Preparing">Preparing</option>
+          <option value="Delivered">Delivered</option>
+        </select>
+        <input type="text" id="orderRoomFilter" placeholder="Room number">
+        <input type="date" id="orderDateFilter">
+        <button type="button" class="btn btn-clear" id="clearFiltersBtn">Clear</button>
+      </div>
+      <div class="filter-count" id="filterCount"></div>
 
       <div class="card">
         <div id="ordersContainer" class="table-wrap">
@@ -474,6 +536,12 @@
     const orderMenuSelect = document.getElementById('orderMenuSelect');
     const selectedItemsEl = document.getElementById('selectedItems');
     const orderTotalEl = document.getElementById('orderTotal');
+    const orderSearch = document.getElementById('orderSearch');
+    const orderStatusFilter = document.getElementById('orderStatusFilter');
+    const orderRoomFilter = document.getElementById('orderRoomFilter');
+    const orderDateFilter = document.getElementById('orderDateFilter');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    const filterCountEl = document.getElementById('filterCount');
 
     let rooms = [];
     let menuItems = [];
@@ -481,6 +549,12 @@
     let editingOrderId = null;
     let pendingDeleteId = null;
     let itemQuantities = {};
+    const filters = {
+      search: '',
+      status: '',
+      room: '',
+      date: ''
+    };
 
     function escapeHtml(value) {
       return String(value || '')
@@ -518,6 +592,88 @@
 
     function updateOrdersCount() {
       ordersCountEl.textContent = `${orders.length} active orders`;
+    }
+
+    function getFilteredOrders() {
+      const search = filters.search.toLowerCase();
+      const room = filters.room.toLowerCase();
+
+      return orders.filter((order) => {
+        if (filters.status && order.status !== filters.status) return false;
+        if (filters.date) {
+          const orderDate = new Date(order.order_date);
+          if (Number.isNaN(orderDate.getTime())) return false;
+          const dateString = orderDate.toISOString().slice(0, 10);
+          if (dateString !== filters.date) return false;
+        }
+
+        const roomText = String(order.room_number || '');
+        if (room && !roomText.toLowerCase().includes(room)) return false;
+
+        if (!search) return true;
+
+        const itemNames = (order.items || []).map((item) => item.name || '').join(' ');
+        const searchTarget = [
+          `#${order.id}`,
+          roomText,
+          order.status,
+          itemNames,
+          Number(order.total_price || 0).toFixed(0)
+        ].join(' ').toLowerCase();
+
+        return searchTarget.includes(search);
+      });
+    }
+
+    function updateFilterCount(filteredCount) {
+      if (!orders.length) {
+        filterCountEl.textContent = '';
+        return;
+      }
+
+      if (filteredCount === orders.length) {
+        filterCountEl.textContent = `Showing all ${orders.length} orders`;
+        return;
+      }
+
+      filterCountEl.textContent = `Showing ${filteredCount} of ${orders.length} orders`;
+    }
+
+    function clearFilters() {
+      filters.search = '';
+      filters.status = '';
+      filters.room = '';
+      filters.date = '';
+
+      orderSearch.value = '';
+      orderStatusFilter.value = '';
+      orderRoomFilter.value = '';
+      orderDateFilter.value = '';
+      renderOrdersTable();
+    }
+
+    function bindFilterEvents() {
+      orderSearch.addEventListener('input', () => {
+        filters.search = orderSearch.value.trim();
+        renderOrdersTable();
+      });
+
+      orderStatusFilter.addEventListener('change', () => {
+        filters.status = orderStatusFilter.value;
+        renderOrdersTable();
+      });
+
+      orderRoomFilter.addEventListener('input', () => {
+        filters.room = orderRoomFilter.value.trim();
+        renderOrdersTable();
+      });
+
+      orderDateFilter.addEventListener('change', () => {
+        filters.date = orderDateFilter.value;
+        renderOrdersTable();
+      });
+
+      clearFiltersBtn.addEventListener('click', clearFilters);
     }
 
     function renderRoomsDropdown() {
@@ -608,11 +764,21 @@
     function renderOrdersTable() {
       if (!orders.length) {
         ordersContainer.innerHTML = '<div class="empty-state">No orders yet. Click "+ New Order" to create one.</div>';
+        updateFilterCount(0);
         updateOrdersCount();
         return;
       }
 
-      const rows = orders.map((order) => {
+      const filteredOrders = getFilteredOrders();
+      updateFilterCount(filteredOrders.length);
+
+      if (!filteredOrders.length) {
+        ordersContainer.innerHTML = '<div class="empty-state">No orders match the current filters.</div>';
+        updateOrdersCount();
+        return;
+      }
+
+      const rows = filteredOrders.map((order) => {
         const itemLines = (order.items || []).map((item) => {
           const name = escapeHtml(item.name || 'Item');
           return `<div class="item-line">${name} x ${item.quantity}</div>`;
@@ -889,6 +1055,7 @@
     window.updateItemQuantity = updateItemQuantity;
 
     (async function initOrdersPage() {
+      bindFilterEvents();
       const [roomsLoaded, menuLoaded] = await Promise.all([loadRooms(), loadMenuItems()]);
       if (!roomsLoaded || !menuLoaded) return;
       resetOrderForm();
